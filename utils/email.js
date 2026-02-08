@@ -1,45 +1,17 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
-
-exports.sendEmail = async (options) => {
+const sendEmail = async (options) => {
   try {
-    await transporter.sendMail({
-      from: `WorkIndex <${process.env.EMAIL_USER}>`,
+    await resend.emails.send({
+      from: 'WorkIndex <onboarding@resend.dev>',
       to: options.email,
       subject: options.subject,
-      text: options.message,
-      html: options.html
+      html: options.message
     });
-    return true;
+    console.log('✉️ Email sent to:', options.email);
   } catch (error) {
     console.error('Email error:', error);
-    return false;
+    throw error;
   }
-};
-
-exports.sendOTPEmail = async (email, otp) => {
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #FC8019;">WorkIndex Email Verification</h2>
-      <p>Your verification code is:</p>
-      <div style="background: #f5f5f5; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px;">
-        ${otp}
-      </div>
-      <p>This code will expire in 10 minutes.</p>
-    </div>
-  `;
-  return await exports.sendEmail({
-    email,
-    subject: 'WorkIndex - Email Verification Code',
-    message: `Your verification code is: ${otp}`,
-    html
-  });
 };
