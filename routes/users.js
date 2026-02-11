@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
 const User = require('../models/User');
 
+// Get current user profile
 router.get('/me', protect, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -21,6 +22,7 @@ router.get('/me', protect, async (req, res) => {
         reviewCount: user.reviewCount,
         emailVerified: user.emailVerified,
         phoneVerified: user.phoneVerified,
+        profile: user.profile || {},  // ⭐ ADDED: Include profile data
         createdAt: user.createdAt
       }
     });
@@ -30,13 +32,16 @@ router.get('/me', protect, async (req, res) => {
   }
 });
 
+// Update basic user info
 router.put('/me', protect, async (req, res) => {
   try {
     const { name, specialization } = req.body;
     const updateData = {};
     if (name) updateData.name = name;
     if (specialization && req.user.role === 'expert') updateData.specialization = specialization;
+    
     const user = await User.findByIdAndUpdate(req.user.id, updateData, { new: true, runValidators: true });
+    
     res.json({
       success: true,
       user: {
@@ -46,7 +51,8 @@ router.put('/me', protect, async (req, res) => {
         phone: user.phone,
         role: user.role,
         credits: user.credits,
-        specialization: user.specialization
+        specialization: user.specialization,
+        profile: user.profile || {}  // ⭐ ADDED: Include profile
       }
     });
   } catch (error) {
@@ -55,6 +61,42 @@ router.put('/me', protect, async (req, res) => {
   }
 });
 
+// ⭐ NEW: Update user profile (questionnaire data)
+router.put('/profile', protect, async (req, res) => {
+  try {
+    const { profile } = req.body;
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { profile: profile },
+      { new: true, runValidators: false }
+    ).select('-password');
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        credits: user.credits,
+        profile: user.profile || {},
+        specialization: user.specialization
+      }
+    });
+
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
+// Add qualification (experts only)
 router.post('/qualifications', protect, authorize('expert'), async (req, res) => {
   try {
     const { title, description } = req.body;
@@ -68,6 +110,7 @@ router.post('/qualifications', protect, authorize('expert'), async (req, res) =>
   }
 });
 
+// Get expert public profile
 router.get('/expert/:id', async (req, res) => {
   try {
     const expert = await User.findById(req.params.id).select('name specialization qualifications rating reviewCount createdAt');
