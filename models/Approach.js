@@ -31,11 +31,11 @@ required: true
 },
 clientEmail: {
 type: String,
-default: null  // ✅ Explicit default for better null handling
+default: null
 },
 clientPhone: {
 type: String,
-default: null  // ✅ Explicit default for better null handling
+default: null
 },
 viewedAt: Date,
 respondedAt: Date
@@ -43,8 +43,7 @@ respondedAt: Date
 timestamps: true
 });
 
-// ✅ Indexes for faster queries
-approachSchema.index({ expert: 1, createdAt: -1 }); // Already exists - good!
-approachSchema.index({ request: 1 }); // For checking existing approaches
+approachSchema.index({ expert: 1, createdAt: -1 });
+approachSchema.index({ request: 1 });
 
 module.exports = mongoose.model(‘Approach’, approachSchema);
