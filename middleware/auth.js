@@ -41,3 +41,6 @@ exports.authorize = (...roles) => {
     next();
   };
 };
+
+// ⭐ ADD THIS LINE: Alias for backwards compatibility
+exports.authenticate = exports.protect;
