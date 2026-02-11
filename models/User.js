@@ -40,6 +40,11 @@ const userSchema = new mongoose.Schema({
     title: String,
     description: String
   }],
+  // ⭐ NEW: Profile field for questionnaire data
+  profile: {
+    type: Object,
+    default: {}
+  },
   rating: {
     type: Number,
     default: 0
