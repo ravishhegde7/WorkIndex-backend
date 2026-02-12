@@ -2,65 +2,136 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 
-// Middleware
+// ═══════════════════════════════════════════════════════════
+// MIDDLEWARE
+// ═══════════════════════════════════════════════════════════
+
 app.use(cors({ 
   origin: process.env.FRONTEND_URL || '*', 
   credentials: true 
 }));
-app.use(express.json());
 
-// Health check
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// ⭐ Serve static files (for uploaded images and documents)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// ═══════════════════════════════════════════════════════════
+// HEALTH CHECK
+// ═══════════════════════════════════════════════════════════
+
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date(),
-    env: process.env.NODE_ENV || 'development'
+    uptime: process.uptime(),
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
   });
 });
 
-// ⭐ Import Route Files
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'WorkIndex API Server',
+    version: '2.0.0',
+    endpoints: {
+      health: '/health',
+      auth: '/api/auth/*',
+      users: '/api/users/*',
+      requests: '/api/requests/*',
+      approaches: '/api/approaches/*',
+      credits: '/api/credits/*',
+      documents: '/api/documents/*',
+      accessRequests: '/api/access-requests/*',
+      ratings: '/api/ratings/*'
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+// ROUTES
+// ═══════════════════════════════════════════════════════════
+
+// Import route files
 const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/users');
 const requestRoutes = require('./routes/requests');
 const approachRoutes = require('./routes/approaches');
-const userRoutes = require('./routes/users');
+const creditRoutes = require('./routes/credits');
+const documentRoutes = require('./routes/documents');
+const accessRequestRoutes = require('./routes/accessRequests');
+const ratingRoutes = require('./routes/ratings');
 
-// ⭐ Register Routes
+// Register routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/requests', requestRoutes);
 app.use('/api/approaches', approachRoutes);
-app.use('/api/users', userRoutes);
+app.use('/api/credits', creditRoutes);
+app.use('/api/documents', documentRoutes);
+app.use('/api/access-requests', accessRequestRoutes);
+app.use('/api/ratings', ratingRoutes);
+
+// ═══════════════════════════════════════════════════════════
+// ERROR HANDLING
+// ═══════════════════════════════════════════════════════════
 
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ 
     success: false, 
-    message: 'Route not found' 
+    message: 'Route not found',
+    path: req.path
   });
 });
 
-// Error handler
+// Global error handler
 app.use((err, req, res, next) => {
-  console.error('Server error:', err);
-  res.status(500).json({ 
-    success: false, 
-    message: err.message || 'Internal server error' 
+  console.error('Server Error:', err);
+  
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal server error',
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 });
 
-// Connect to MongoDB and start server
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
-    console.log('✅ MongoDB connected');
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-    });
-  })
-  .catch(err => {
-    console.error('❌ MongoDB connection error:', err);
-    process.exit(1);
+// ═══════════════════════════════════════════════════════════
+// DATABASE CONNECTION & SERVER START
+// ═══════════════════════════════════════════════════════════
+
+const PORT = process.env.PORT || 5000;
+
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => {
+  console.log('✅ MongoDB connected successfully');
+  console.log(`📊 Database: ${mongoose.connection.name}`);
+  
+  app.listen(PORT, () => {
+    console.log('🚀 ═══════════════════════════════════════════════════');
+    console.log(`🚀 WorkIndex Server running on port ${PORT}`);
+    console.log(`🚀 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🚀 API URL: http://localhost:${PORT}`);
+    console.log('🚀 ═══════════════════════════════════════════════════');
   });
+})
+.catch(err => {
+  console.error('❌ MongoDB connection error:', err);
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  console.error('❌ Unhandled Rejection:', err);
+  // Close server & exit process
+  process.exit(1);
+});
+
+module.exports = app;
