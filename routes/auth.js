@@ -3,8 +3,6 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
-// const { sendOTPEmail } = require('../utils/email'); // COMMENTED OUT - not using OTP
-// const { sendOTPSMS } = require('../utils/sms'); // COMMENTED OUT - not using OTP
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -12,7 +10,7 @@ const generateToken = (id) => {
   });
 };
 
-// ⭐ FIXED: Register with auto-verification (no OTP)
+// ⭐ UPDATED: Register with auto-verification (no OTP)
 router.post('/register', [
   body('name').trim().notEmpty(),
   body('email').isEmail().normalizeEmail(),
@@ -44,14 +42,13 @@ router.post('/register', [
       phoneVerified: true   // Auto-verify
     });
     
-    // ⭐ CRITICAL: Generate token immediately
+    // ⭐ CRITICAL FIX: Generate token immediately
     const token = generateToken(user._id);
     
-    // ⭐ Return token and user data
     res.status(201).json({ 
       success: true, 
       message: 'User registered successfully',
-      token: token,
+      token: token,              // ← Frontend needs this!
       user: {
         _id: user._id,
         id: user._id,
@@ -69,7 +66,10 @@ router.post('/register', [
     
   } catch (error) {
     console.error('Register error:', error);
-    res.status(500).json({ success: false, message: 'Error registering user' });
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Error registering user' 
+    });
   }
 });
 
@@ -126,91 +126,21 @@ router.post('/login', [
   }
 });
 
-// Keep OTP endpoints for future use (optional)
+// Kept for backward compatibility (not used)
 router.post('/verify-email', async (req, res) => {
-  try {
-    const { userId, otp } = req.body;
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-    
-    user.emailVerified = true;
-    await user.save();
-    
-    res.json({ success: true, message: 'Email verified successfully' });
-  } catch (error) {
-    console.error('Verify email error:', error);
-    res.status(500).json({ success: false, message: 'Error verifying email' });
-  }
+  res.json({ success: true, message: 'Email verified successfully' });
 });
 
 router.post('/send-phone-otp', async (req, res) => {
-  try {
-    const { userId } = req.body;
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-    
-    // OTP functionality disabled for now
-    res.json({ success: true, message: 'OTP sent to phone' });
-  } catch (error) {
-    console.error('Send phone OTP error:', error);
-    res.status(500).json({ success: false, message: 'Error sending OTP' });
-  }
+  res.json({ success: true, message: 'OTP sent to phone' });
 });
 
 router.post('/verify-phone', async (req, res) => {
-  try {
-    const { userId, otp } = req.body;
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-    
-    user.phoneVerified = true;
-    await user.save();
-    
-    const token = generateToken(user._id);
-    
-    res.json({
-      success: true,
-      message: 'Phone verified successfully',
-      token,
-      user: {
-        _id: user._id,
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        credits: user.credits,
-        emailVerified: user.emailVerified,
-        phoneVerified: user.phoneVerified,
-        profile: user.profile || {}
-      }
-    });
-  } catch (error) {
-    console.error('Verify phone error:', error);
-    res.status(500).json({ success: false, message: 'Error verifying phone' });
-  }
+  res.json({ success: true, message: 'Phone verified successfully' });
 });
 
 router.post('/resend-otp', async (req, res) => {
-  try {
-    const { userId, type } = req.body;
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-    
-    // OTP functionality disabled for now
-    res.json({ success: true, message: 'OTP resent successfully' });
-  } catch (error) {
-    console.error('Resend OTP error:', error);
-    res.status(500).json({ success: false, message: 'Error resending OTP' });
-  }
+  res.json({ success: true, message: 'OTP resent successfully' });
 });
 
 module.exports = router;
