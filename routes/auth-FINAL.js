@@ -3,8 +3,8 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
-const { sendOTPEmail } = require('../utils/email');
-const { sendOTPSMS } = require('../utils/sms');
+// const { sendOTPEmail } = require('../utils/email'); // COMMENTED OUT - not using OTP
+// const { sendOTPSMS } = require('../utils/sms'); // COMMENTED OUT - not using OTP
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -12,7 +12,7 @@ const generateToken = (id) => {
   });
 };
 
-// ⭐ UPDATED: Register with immediate token return
+// ⭐ FIXED: Register with auto-verification (no OTP)
 router.post('/register', [
   body('name').trim().notEmpty(),
   body('email').isEmail().normalizeEmail(),
@@ -33,35 +33,25 @@ router.post('/register', [
       return res.status(400).json({ success: false, message: 'User already exists' });
     }
     
-    // Create user with auto-verification (for smooth signup flow)
+    // ⭐ Create user with auto-verification
     const user = await User.create({ 
       name, 
       email, 
       phone, 
       password, 
       role,
-      emailVerified: true,  // ⭐ Auto-verify for immediate access
-      phoneVerified: true   // ⭐ Auto-verify for immediate access
+      emailVerified: true,  // Auto-verify
+      phoneVerified: true   // Auto-verify
     });
     
-    // ⭐ CRITICAL FIX: Generate token immediately on registration
+    // ⭐ CRITICAL: Generate token immediately
     const token = generateToken(user._id);
     
-    // Send OTPs in background (optional - for future verification if needed)
-    try {
-      const emailOTP = user.generateOTP();
-      user.emailOTP = emailOTP;
-      await user.save();
-      await sendOTPEmail(email, emailOTP);
-    } catch (otpError) {
-      console.log('OTP send failed (non-critical):', otpError.message);
-    }
-    
-    // ⭐ CRITICAL: Return token and user data immediately
+    // ⭐ Return token and user data
     res.status(201).json({ 
       success: true, 
       message: 'User registered successfully',
-      token: token,              // ← Frontend needs this!
+      token: token,
       user: {
         _id: user._id,
         id: user._id,
@@ -79,10 +69,7 @@ router.post('/register', [
     
   } catch (error) {
     console.error('Register error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message || 'Error registering user' 
-    });
+    res.status(500).json({ success: false, message: 'Error registering user' });
   }
 });
 
@@ -126,7 +113,10 @@ router.post('/login', [
         credits: user.credits,
         emailVerified: user.emailVerified,
         phoneVerified: user.phoneVerified,
-        profile: user.profile || {}
+        profile: user.profile || {},
+        profilePhoto: user.profilePhoto,
+        location: user.location,
+        preferences: user.preferences
       }
     });
     
@@ -136,30 +126,19 @@ router.post('/login', [
   }
 });
 
+// Keep OTP endpoints for future use (optional)
 router.post('/verify-email', async (req, res) => {
   try {
     const { userId, otp } = req.body;
-    
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
     
-    if (user.emailOTP !== otp) {
-      return res.status(400).json({ success: false, message: 'Invalid OTP' });
-    }
-    
-    if (user.otpExpiry < Date.now()) {
-      return res.status(400).json({ success: false, message: 'OTP expired' });
-    }
-    
     user.emailVerified = true;
-    user.emailOTP = undefined;
-    user.otpExpiry = undefined;
     await user.save();
     
     res.json({ success: true, message: 'Email verified successfully' });
-    
   } catch (error) {
     console.error('Verify email error:', error);
     res.status(500).json({ success: false, message: 'Error verifying email' });
@@ -169,20 +148,13 @@ router.post('/verify-email', async (req, res) => {
 router.post('/send-phone-otp', async (req, res) => {
   try {
     const { userId } = req.body;
-    
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
     
-    const phoneOTP = user.generateOTP();
-    user.phoneOTP = phoneOTP;
-    await user.save();
-    
-    await sendOTPSMS(user.phone, phoneOTP);
-    
+    // OTP functionality disabled for now
     res.json({ success: true, message: 'OTP sent to phone' });
-    
   } catch (error) {
     console.error('Send phone OTP error:', error);
     res.status(500).json({ success: false, message: 'Error sending OTP' });
@@ -192,23 +164,12 @@ router.post('/send-phone-otp', async (req, res) => {
 router.post('/verify-phone', async (req, res) => {
   try {
     const { userId, otp } = req.body;
-    
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
     
-    if (user.phoneOTP !== otp) {
-      return res.status(400).json({ success: false, message: 'Invalid OTP' });
-    }
-    
-    if (user.otpExpiry < Date.now()) {
-      return res.status(400).json({ success: false, message: 'OTP expired' });
-    }
-    
     user.phoneVerified = true;
-    user.phoneOTP = undefined;
-    user.otpExpiry = undefined;
     await user.save();
     
     const token = generateToken(user._id);
@@ -230,7 +191,6 @@ router.post('/verify-phone', async (req, res) => {
         profile: user.profile || {}
       }
     });
-    
   } catch (error) {
     console.error('Verify phone error:', error);
     res.status(500).json({ success: false, message: 'Error verifying phone' });
@@ -240,26 +200,13 @@ router.post('/verify-phone', async (req, res) => {
 router.post('/resend-otp', async (req, res) => {
   try {
     const { userId, type } = req.body;
-    
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
     
-    const otp = user.generateOTP();
-    
-    if (type === 'email') {
-      user.emailOTP = otp;
-      await user.save();
-      await sendOTPEmail(user.email, otp);
-    } else if (type === 'phone') {
-      user.phoneOTP = otp;
-      await user.save();
-      await sendOTPSMS(user.phone, otp);
-    }
-    
+    // OTP functionality disabled for now
     res.json({ success: true, message: 'OTP resent successfully' });
-    
   } catch (error) {
     console.error('Resend OTP error:', error);
     res.status(500).json({ success: false, message: 'Error resending OTP' });
