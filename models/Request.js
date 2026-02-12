@@ -34,6 +34,13 @@ const requestSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  
+  // ⭐ NEW: Attached Documents
+  documents: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Document'
+  }],
+  
   credits: {
     type: Number,
     required: true,
@@ -44,6 +51,22 @@ const requestSchema = new mongoose.Schema({
     enum: ['pending', 'active', 'closed', 'cancelled'],
     default: 'pending'
   },
+  
+  // ⭐ NEW: Accepted Expert
+  acceptedExpert: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  
+  // ⭐ NEW: Completion Status
+  isCompleted: {
+    type: Boolean,
+    default: false
+  },
+  
+  completedAt: Date,
+  
   responseCount: {
     type: Number,
     default: 0
@@ -56,7 +79,10 @@ const requestSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Indexes
 requestSchema.index({ client: 1, createdAt: -1 });
 requestSchema.index({ service: 1, status: 1 });
+requestSchema.index({ status: 1, createdAt: -1 });
+requestSchema.index({ location: 1 });
 
 module.exports = mongoose.model('Request', requestSchema);
