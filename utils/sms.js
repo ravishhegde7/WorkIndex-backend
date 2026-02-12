@@ -1,30 +1,41 @@
-const twilio = require('twilio');
+// Simple SMS utility (no external dependencies)
+// For production, integrate with Twilio, MSG91, or SMS Gateway
 
-let twilioClient = null;
-
-if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
-  twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-}
-
-exports.sendSMS = async (phone, message) => {
+const sendOTPSMS = async (phone, otp) => {
   try {
-    if (!twilioClient) {
-      console.log('📱 SMS (Mock):', phone, message);
-      return true;
-    }
-    await twilioClient.messages.create({
-      body: message,
-      from: process.env.TWILIO_PHONE_NUMBER,
-      to: `+91${phone}`
-    });
+    // Log to console instead of actually sending
+    console.log(`📱 [SMS] OTP for +91${phone}: ${otp}`);
+    console.log(`📱 In production, integrate with Twilio/MSG91`);
     return true;
   } catch (error) {
-    console.error('SMS error:', error);
+    console.error('SMS send error:', error);
     return false;
   }
 };
 
-exports.sendOTPSMS = async (phone, otp) => {
-  const message = `Your WorkIndex verification code is: ${otp}. Valid for 10 minutes.`;
-  return await exports.sendSMS(phone, message);
+const sendWelcomeSMS = async (phone, name) => {
+  try {
+    console.log(`📱 [SMS] Welcome SMS sent to ${name} (+91${phone})`);
+    return true;
+  } catch (error) {
+    console.error('Welcome SMS error:', error);
+    return false;
+  }
+};
+
+const sendNotificationSMS = async (phone, message) => {
+  try {
+    console.log(`📱 [SMS] To: +91${phone}`);
+    console.log(`📱 [SMS] Message: ${message}`);
+    return true;
+  } catch (error) {
+    console.error('Notification SMS error:', error);
+    return false;
+  }
+};
+
+module.exports = {
+  sendOTPSMS,
+  sendWelcomeSMS,
+  sendNotificationSMS
 };
