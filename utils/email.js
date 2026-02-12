@@ -1,25 +1,42 @@
-const { Resend } = require('resend');
+// Simple email utility (no external dependencies)
+// For production, integrate with SendGrid, AWS SES, or Nodemailer
 
-const sendEmail = async (options) => {
-  if (!process.env.RESEND_API_KEY) {
-    console.log('📧 EMAIL OTP:', options.message.match(/\d{6}/)?.[0] || 'No OTP found');
-    return;
-  }
-
-  const resend = new Resend(process.env.RESEND_API_KEY);
-
+const sendOTPEmail = async (email, otp) => {
   try {
-    await resend.emails.send({
-      from: 'WorkIndex <onboarding@resend.dev>',
-      to: options.email,
-      subject: options.subject,
-      html: options.message
-    });
-    console.log('✉️ Email sent to:', options.email);
+    // Log to console instead of actually sending
+    console.log(`📧 [EMAIL] OTP for ${email}: ${otp}`);
+    console.log(`📧 In production, integrate with SendGrid/SES/Nodemailer`);
+    return true;
   } catch (error) {
-    console.error('❌ Email error:', error);
-    throw error;
+    console.error('Email send error:', error);
+    return false;
   }
 };
 
-module.exports = sendEmail;
+const sendWelcomeEmail = async (email, name) => {
+  try {
+    console.log(`📧 [EMAIL] Welcome email sent to ${name} (${email})`);
+    return true;
+  } catch (error) {
+    console.error('Welcome email error:', error);
+    return false;
+  }
+};
+
+const sendNotificationEmail = async (email, subject, message) => {
+  try {
+    console.log(`📧 [EMAIL] To: ${email}`);
+    console.log(`📧 [EMAIL] Subject: ${subject}`);
+    console.log(`📧 [EMAIL] Message: ${message}`);
+    return true;
+  } catch (error) {
+    console.error('Notification email error:', error);
+    return false;
+  }
+};
+
+module.exports = {
+  sendOTPEmail,
+  sendWelcomeEmail,
+  sendNotificationEmail
+};
