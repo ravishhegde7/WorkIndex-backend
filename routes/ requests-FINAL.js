@@ -65,206 +65,113 @@ router.get('/available', protect, authorize('expert'), async (req, res) => {
   }
 });
 
-// Create new request
 router.post('/', protect, authorize('client'), async (req, res) => {
   try {
     const { service, title, description, answers, timeline, budget, location } = req.body;
     const credits = calculateCredits(service, answers);
-    
     const request = await Request.create({
       client: req.user.id,
       service,
       title,
       description,
-      answers,  // ⭐ Store questionnaire answers
+      answers,
       timeline,
       budget,
       location,
       credits,
       status: 'pending'
     });
-    
     res.status(201).json({ success: true, request });
-    
   } catch (error) {
     console.error('Create request error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message || 'Error creating request' 
-    });
+    res.status(500).json({ success: false, message: 'Error creating request' });
   }
 });
 
-// Get requests (client sees their own, expert sees all available)
 router.get('/', protect, async (req, res) => {
   try {
     let query = {};
-    
     if (req.user.role === 'client') {
-      // Client sees only their own requests
       query.client = req.user.id;
     } else {
-      // Expert sees all pending/active requests
       query.status = { $in: ['pending', 'active'] };
       if (req.query.service && req.query.service !== 'all') {
         query.service = req.query.service;
       }
     }
-    
-    const requests = await Request.find(query)
-      .sort('-createdAt')
-      .limit(50)
-      .populate('client', 'name email phone')
-      .lean();
-    
-    res.json({ 
-      success: true, 
-      count: requests.length, 
-      requests 
-    });
-    
+    const requests = await Request.find(query).sort('-createdAt').limit(50).populate('client', 'name email phone').lean();
+    res.json({ success: true, count: requests.length, requests });
   } catch (error) {
     console.error('Get requests error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error fetching requests' 
-    });
+    res.status(500).json({ success: false, message: 'Error fetching requests' });
   }
 });
 
-// Get single request by ID
 router.get('/:id', protect, async (req, res) => {
   try {
-    const request = await Request.findById(req.params.id)
-      .populate('client', 'name email phone');
-    
+    const request = await Request.findById(req.params.id).populate('client', 'name email phone');
     if (!request) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Request not found' 
-      });
+      return res.status(404).json({ success: false, message: 'Request not found' });
     }
-    
-    // Increment view count
-    request.viewCount = (request.viewCount || 0) + 1;
+    request.viewCount += 1;
     await request.save();
-    
     res.json({ success: true, request });
-    
   } catch (error) {
     console.error('Get request error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error fetching request' 
-    });
+    res.status(500).json({ success: false, message: 'Error fetching request' });
   }
 });
 
-// Get approaches for a request (client only)
 router.get('/:id/approaches', protect, authorize('client'), async (req, res) => {
   try {
     const request = await Request.findById(req.params.id);
-    
     if (!request) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Request not found' 
-      });
+      return res.status(404).json({ success: false, message: 'Request not found' });
     }
-    
     if (request.client.toString() !== req.user.id) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Not authorized' 
-      });
+      return res.status(403).json({ success: false, message: 'Not authorized' });
     }
-    
-    const approaches = await Approach.find({ request: req.params.id })
-      .populate('expert', 'name specialization rating reviewCount')
-      .sort('-createdAt');
-    
-    res.json({ 
-      success: true, 
-      count: approaches.length, 
-      approaches 
-    });
-    
+    const approaches = await Approach.find({ request: req.params.id }).populate('expert', 'name specialization rating reviewCount').sort('-createdAt');
+    res.json({ success: true, count: approaches.length, approaches });
   } catch (error) {
     console.error('Get approaches error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error fetching approaches' 
-    });
+    res.status(500).json({ success: false, message: 'Error fetching approaches' });
   }
 });
 
-// Update request status
 router.put('/:id/status', protect, authorize('client'), async (req, res) => {
   try {
     const { status } = req.body;
-    
     const request = await Request.findById(req.params.id);
-    
     if (!request) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Request not found' 
-      });
+      return res.status(404).json({ success: false, message: 'Request not found' });
     }
-    
     if (request.client.toString() !== req.user.id) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Not authorized' 
-      });
+      return res.status(403).json({ success: false, message: 'Not authorized' });
     }
-    
     request.status = status;
     await request.save();
-    
     res.json({ success: true, request });
-    
   } catch (error) {
     console.error('Update status error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error updating status' 
-    });
+    res.status(500).json({ success: false, message: 'Error updating status' });
   }
 });
 
-// Delete request
 router.delete('/:id', protect, authorize('client'), async (req, res) => {
   try {
     const request = await Request.findById(req.params.id);
-    
     if (!request) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Request not found' 
-      });
+      return res.status(404).json({ success: false, message: 'Request not found' });
     }
-    
     if (request.client.toString() !== req.user.id) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Not authorized' 
-      });
+      return res.status(403).json({ success: false, message: 'Not authorized' });
     }
-    
     await request.deleteOne();
-    
-    res.json({ 
-      success: true, 
-      message: 'Request deleted' 
-    });
-    
+    res.json({ success: true, message: 'Request deleted' });
   } catch (error) {
     console.error('Delete request error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error deleting request' 
-    });
+    res.status(500).json({ success: false, message: 'Error deleting request' });
   }
 });
 
