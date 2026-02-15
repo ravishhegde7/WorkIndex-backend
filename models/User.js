@@ -39,8 +39,7 @@ const userSchema = new mongoose.Schema({
   
   credits: {
     type: Number,
-    default: 50,
-    min: 0
+    default: 50
   },
   
   // ⭐ UPDATED: Expert Profile Fields
