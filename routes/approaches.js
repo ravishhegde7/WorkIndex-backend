@@ -26,6 +26,19 @@ router.post('/', protect, authorize('expert'), async (req, res) => {
       });
     }
     
+    // ✅ NEW: Check if request already has 5 approaches (MAX LIMIT)
+    const approachCount = await Approach.countDocuments({ request: requestId });
+    
+    if (approachCount >= 5) {
+      console.log('❌ Request already has maximum approaches:', approachCount);
+      return res.status(400).json({ 
+        success: false, 
+        message: 'This request has already received the maximum number of approaches (5)' 
+      });
+    }
+    
+    console.log('  Current approach count:', approachCount);
+    
     // Check if already approached
     const existingApproach = await Approach.findOne({
       request: requestId,
