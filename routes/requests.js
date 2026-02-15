@@ -41,7 +41,24 @@ router.get('/available', protect, authorize('expert'), async (req, res) => {
     .limit(50)
     .lean();
 
-    const sanitizedRequests = requests.map(r => ({
+    // ✅ NEW: Get approach counts for all requests
+    const requestIds = requests.map(r => r._id);
+    
+    const approachCounts = await Approach.aggregate([
+      { $match: { request: { $in: requestIds } } },
+      { $group: { _id: '$request', count: { $sum: 1 } } }
+    ]);
+    
+    // Create a map for quick lookup
+    const countMap = {};
+    approachCounts.forEach(item => {
+      countMap[item._id.toString()] = item.count;
+    });
+    
+    console.log('📊 Approach counts:', countMap);
+
+    // ✅ NEW: Add approach counts to each request and filter out full ones
+    const requestsWithCounts = requests.map(r => ({
       _id: r._id,
       title: r.title,
       description: r.description,
@@ -53,15 +70,23 @@ router.get('/available', protect, authorize('expert'), async (req, res) => {
       answers: r.answers || {},
       createdAt: r.createdAt,
       status: r.status,
-      viewCount: r.viewCount || 0
+      viewCount: r.viewCount || 0,
+      // ✅ NEW: Approach counter fields
+      currentApproaches: countMap[r._id.toString()] || 0,
+      maxApproaches: 5,
+      isFull: (countMap[r._id.toString()] || 0) >= 5
     }));
+    
+    // ✅ NEW: Filter out requests that already have 5 approaches
+    const availableRequests = requestsWithCounts.filter(r => !r.isFull);
 
-    console.log(`✅ Found ${sanitizedRequests.length} available requests for expert ${req.user.id}`);
+    console.log(`✅ Found ${availableRequests.length} available requests for expert ${req.user.id}`);
+    console.log(`   (Filtered out ${requestsWithCounts.length - availableRequests.length} full requests)`);
 
     res.json({ 
       success: true, 
-      count: sanitizedRequests.length, 
-      requests: sanitizedRequests 
+      count: availableRequests.length, 
+      requests: availableRequests 
     });
 
   } catch (error) {
