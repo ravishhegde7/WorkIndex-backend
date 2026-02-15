@@ -6,16 +6,8 @@ const { protect, authorize } = require('../middleware/auth');
 const User = require('../models/User');
 const Rating = require('../models/Rating');
 
-// ⭐ Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/profiles/');
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'profile-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// ✅ FIXED: Use memory storage instead of disk storage
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
@@ -93,11 +85,9 @@ router.put('/me', protect, async (req, res) => {
     
     const updateData = {};
     
-    // Basic fields
     if (name) updateData.name = name;
     if (bio) updateData.bio = bio;
     
-    // Expert-specific fields
     if (req.user.role === 'expert') {
       if (specialization) updateData.specialization = specialization;
       if (companyName) updateData.companyName = companyName;
@@ -109,7 +99,6 @@ router.put('/me', protect, async (req, res) => {
       if (certifications) updateData.certifications = certifications;
     }
     
-    // Location (for both client and expert)
     if (location) updateData.location = location;
     
     const user = await User.findByIdAndUpdate(
@@ -144,31 +133,41 @@ router.put('/me', protect, async (req, res) => {
   }
 });
 
-// ⭐ NEW: Upload profile photo
-router.post('/profile-photo', protect, upload.single('photo'), async (req, res) => {
+// ✅ FIXED: Upload profile photo with base64 storage
+router.post('/profile-photo', protect, upload.single('profilePhoto'), async (req, res) => {
   try {
     if (!req.file) {
+      console.log('❌ No file in request');
       return res.status(400).json({ 
         success: false, 
         message: 'No file uploaded' 
       });
     }
     
-    const photoUrl = '/uploads/profiles/' + req.file.filename;
+    console.log('📸 Uploading profile photo:');
+    console.log('  User:', req.user.id);
+    console.log('  Filename:', req.file.originalname);
+    console.log('  Size:', req.file.size);
+    
+    // Convert to base64
+    const base64Image = req.file.buffer.toString('base64');
+    const dataURI = `data:${req.file.mimetype};base64,${base64Image}`;
     
     const user = await User.findByIdAndUpdate(
       req.user.id,
-      { profilePhoto: photoUrl },
+      { profilePhoto: dataURI },
       { new: true }
     );
+    
+    console.log('✅ Profile photo uploaded successfully');
     
     res.json({
       success: true,
       message: 'Profile photo uploaded successfully',
-      profilePhoto: photoUrl
+      profilePhoto: dataURI
     });
   } catch (error) {
-    console.error('Upload photo error:', error);
+    console.error('❌ Upload photo error:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Error uploading photo' 
@@ -176,7 +175,7 @@ router.post('/profile-photo', protect, upload.single('photo'), async (req, res) 
   }
 });
 
-// ⭐ NEW: Update user preferences (dark mode, notifications)
+// Update user preferences
 router.put('/preferences', protect, async (req, res) => {
   try {
     const { darkMode, notifications } = req.body;
@@ -205,7 +204,7 @@ router.put('/preferences', protect, async (req, res) => {
   }
 });
 
-// ⭐ UPDATED: Add to portfolio (for experts)
+// Add to portfolio (for experts)
 router.post('/portfolio', protect, authorize('expert'), upload.single('image'), async (req, res) => {
   try {
     const { title, description, completedAt } = req.body;
@@ -217,7 +216,8 @@ router.post('/portfolio', protect, authorize('expert'), upload.single('image'), 
     };
     
     if (req.file) {
-      portfolioItem.image = '/uploads/profiles/' + req.file.filename;
+      const base64Image = req.file.buffer.toString('base64');
+      portfolioItem.image = `data:${req.file.mimetype};base64,${base64Image}`;
     }
     
     const user = await User.findById(req.user.id);
@@ -239,7 +239,7 @@ router.post('/portfolio', protect, authorize('expert'), upload.single('image'), 
   }
 });
 
-// ⭐ UPDATED: Update profile data (for expert questionnaire)
+// Update profile data (for expert questionnaire)
 router.put('/profile', protect, async (req, res) => {
   try {
     const { profile } = req.body;
@@ -273,7 +273,7 @@ router.put('/profile', protect, async (req, res) => {
   }
 });
 
-// Add qualification (existing)
+// Add qualification
 router.post('/qualifications', protect, authorize('expert'), async (req, res) => {
   try {
     const { title, description } = req.body;
@@ -287,7 +287,7 @@ router.post('/qualifications', protect, authorize('expert'), async (req, res) =>
   }
 });
 
-// ⭐ NEW: Get all experts (for "Find Professionals" page)
+// Get all experts
 router.get('/experts', async (req, res) => {
   try {
     const { 
@@ -301,23 +301,19 @@ router.get('/experts', async (req, res) => {
     
     const query = { role: 'expert', isActive: true };
     
-    // Filter by service
     if (service && service !== 'all') {
       query.servicesOffered = service;
     }
     
-    // Filter by location
     if (location) {
       query['location.city'] = new RegExp(location, 'i');
     }
     
-    // Filter by minimum rating
     if (minRating) {
       query.rating = { $gte: parseFloat(minRating) };
     }
     
-    // Sorting
-    let sort = '-rating'; // Default: highest rated first
+    let sort = '-rating';
     if (sortBy === 'newest') sort = '-createdAt';
     if (sortBy === 'reviews') sort = '-reviewCount';
     if (sortBy === 'name') sort = 'name';
@@ -350,43 +346,6 @@ router.get('/experts', async (req, res) => {
   }
 });
 
-// ⭐ NEW: Get nearby experts (by location)
-router.get('/experts/nearby', async (req, res) => {
-  try {
-    const { latitude, longitude, maxDistance = 50 } = req.query; // maxDistance in km
-    
-    if (!latitude || !longitude) {
-      return res.status(400).json({
-        success: false,
-        message: 'Latitude and longitude are required'
-      });
-    }
-    
-    // Note: For production, you'd use MongoDB geospatial queries
-    // This is a simplified version
-    const experts = await User.find({ 
-      role: 'expert', 
-      isActive: true,
-      'location.coordinates.latitude': { $exists: true }
-    })
-    .select('name profilePhoto specialization bio location rating reviewCount servicesOffered')
-    .limit(20)
-    .lean();
-    
-    res.json({
-      success: true,
-      count: experts.length,
-      experts
-    });
-  } catch (error) {
-    console.error('Get nearby experts error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error fetching nearby experts' 
-    });
-  }
-});
-
 // Get single expert public profile
 router.get('/expert/:id', async (req, res) => {
   try {
@@ -400,7 +359,6 @@ router.get('/expert/:id', async (req, res) => {
       });
     }
     
-    // ⭐ Get ratings for this expert
     const ratings = await Rating.find({ 
       expert: req.params.id, 
       isPublic: true,
