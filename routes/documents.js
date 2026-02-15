@@ -2,16 +2,17 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const { protect } = require('../middleware/auth');
+const { protect, authorize } = require('../middleware/auth');
 const Document = require('../models/Document');
 const AccessRequest = require('../models/AccessRequest');
+const Approach = require('../models/Approach');
 
-// ✅ FIXED: Use memory storage instead of disk storage
+// ✅ Use memory storage
 const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: function (req, file, cb) {
     const allowedTypes = /pdf|doc|docx|xls|xlsx|jpg|jpeg|png|gif/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
@@ -27,7 +28,6 @@ const upload = multer({
   }
 });
 
-// Helper function to determine file type
 function getFileType(mimetype, ext) {
   if (mimetype.includes('pdf')) return 'pdf';
   if (mimetype.includes('word') || ext === '.doc' || ext === '.docx') return 'word';
@@ -36,7 +36,7 @@ function getFileType(mimetype, ext) {
   return 'other';
 }
 
-// ✅ FIXED: Upload document with base64 storage
+// Upload document
 router.post('/upload', protect, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
@@ -51,14 +51,12 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
     console.log('  User:', req.user.id);
     console.log('  Filename:', req.file.originalname);
     console.log('  Size:', req.file.size);
-    console.log('  Mimetype:', req.file.mimetype);
     
     const { description, category, requestId, isPublic } = req.body;
     
     const ext = path.extname(req.file.originalname).toLowerCase();
     const fileType = getFileType(req.file.mimetype, ext);
     
-    // Convert to base64
     const base64File = req.file.buffer.toString('base64');
     const dataURI = `data:${req.file.mimetype};base64,${base64File}`;
     
@@ -70,7 +68,7 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
       fileType,
       mimeType: req.file.mimetype,
       fileSize: req.file.size,
-      fileUrl: dataURI,  // Store as base64
+      fileUrl: dataURI,
       description: description || '',
       category: category || 'other',
       isPublic: isPublic === 'true' || false
@@ -95,6 +93,58 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: error.message || 'Error uploading document' 
+    });
+  }
+});
+
+// ✅ NEW: Get client documents (for experts who approached)
+router.get('/client/:clientId/request/:requestId', protect, authorize('expert'), async (req, res) => {
+  try {
+    const { clientId, requestId } = req.params;
+    
+    console.log('📄 Expert requesting client documents:');
+    console.log('  Expert:', req.user.id);
+    console.log('  Client:', clientId);
+    console.log('  Request:', requestId);
+    
+    // Check if expert has approached this request
+    const approach = await Approach.findOne({
+      expert: req.user.id,
+      request: requestId
+    });
+    
+    if (!approach) {
+      console.log('❌ Expert has not approached this request');
+      return res.status(403).json({
+        success: false,
+        message: 'You must approach this request first to view documents'
+      });
+    }
+    
+    console.log('✅ Approach found, fetching documents');
+    
+    // Get documents for this client/request
+    const documents = await Document.find({
+      owner: clientId,
+      $or: [
+        { request: requestId },
+        { request: null, isPublic: true }
+      ]
+    }).lean();
+    
+    console.log(`✅ Found ${documents.length} documents`);
+    
+    res.json({
+      success: true,
+      count: documents.length,
+      documents
+    });
+    
+  } catch (error) {
+    console.error('❌ Get client documents error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching documents'
     });
   }
 });
