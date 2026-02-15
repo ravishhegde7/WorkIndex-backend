@@ -4,15 +4,22 @@ const { protect, authorize } = require('../middleware/auth');
 const Approach = require('../models/Approach');
 const Request = require('../models/Request');
 const User = require('../models/User');
-const Transaction = require('../models/Transaction');
 
-// ⭐ Create new approach
+// ─── CREATE NEW APPROACH (EXPERT ONLY) ───
 router.post('/', protect, authorize('expert'), async (req, res) => {
   try {
-    const { requestId, message, quote } = req.body;
+    const { request: requestId, message } = req.body;
     
-    const request = await Request.findById(requestId).populate('client');
+    console.log('💼 Expert approaching request:');
+    console.log('  Expert:', req.user.id);
+    console.log('  Request:', requestId);
+    console.log('  Message:', message);
+    
+    // Check if request exists
+    const request = await Request.findById(requestId);
+    
     if (!request) {
+      console.log('❌ Request not found:', requestId);
       return res.status(404).json({ 
         success: false, 
         message: 'Request not found' 
@@ -20,125 +27,94 @@ router.post('/', protect, authorize('expert'), async (req, res) => {
     }
     
     // Check if already approached
-    const existingApproach = await Approach.findOne({ 
-      request: requestId, 
-      expert: req.user.id 
+    const existingApproach = await Approach.findOne({
+      request: requestId,
+      expert: req.user.id
     });
     
     if (existingApproach) {
+      console.log('❌ Already approached this request');
       return res.status(400).json({ 
         success: false, 
-        message: 'Already approached this request' 
+        message: 'You have already approached this request' 
       });
     }
     
+    // Check expert has enough credits
     const expert = await User.findById(req.user.id);
+    const creditsRequired = request.credits || 20;
     
-    if (expert.credits < request.credits) {
+    console.log('  Credits required:', creditsRequired);
+    console.log('  Expert balance:', expert.credits || 0);
+    
+    if (!expert.credits || expert.credits < creditsRequired) {
+      console.log('❌ Insufficient credits');
       return res.status(400).json({ 
         success: false, 
-        message: 'Insufficient credits', 
-        required: request.credits, 
-        available: expert.credits 
+        message: 'Insufficient credits. Please purchase credits to approach this request.' 
       });
     }
     
     // Deduct credits
-    expert.credits -= request.credits;
+    expert.credits -= creditsRequired;
     await expert.save();
+    
+    console.log('  💰 Credits deducted. New balance:', expert.credits);
     
     // Create approach
     const approach = await Approach.create({
       request: requestId,
       expert: req.user.id,
-      message,
-      quote,
-      creditsSpent: request.credits,
-      unlocked: true,
-      clientEmail: request.client.email,
-      clientPhone: request.client.phone
+      client: request.client,
+      message: message || 'I am interested in helping with your request.',
+      creditsSpent: creditsRequired,
+      status: 'pending',
+      contactUnlocked: true  // Credits spent, contact is unlocked
     });
     
-    // Create transaction
-    await Transaction.create({
-      user: req.user.id,
-      type: 'approach_sent',
-      amount: 0,
-      credits: -request.credits,
-      relatedApproach: approach._id,
-      paymentStatus: 'success',
-      description: `Unlocked request: ${request.title}`
-    });
-    
-    // Update request
-    request.responseCount += 1;
-    if (request.status === 'pending') request.status = 'active';
+    // Increment approach count on request
+    request.approachCount = (request.approachCount || 0) + 1;
+    request.responseCount = (request.responseCount || 0) + 1;
     await request.save();
     
-    await approach.populate('expert', 'name specialization rating reviewCount profilePhoto');
+    console.log('✅ Approach created successfully!');
+    console.log('  Approach ID:', approach._id);
+    console.log('  Request approach count:', request.approachCount);
     
     res.status(201).json({ 
       success: true, 
-      approach, 
-      remainingCredits: expert.credits 
+      approach,
+      remainingCredits: expert.credits
     });
     
   } catch (error) {
-    console.error('Create approach error:', error);
+    console.error('❌ Create approach error:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Error creating approach' 
+      message: error.message || 'Error creating approach' 
     });
   }
 });
 
-// ⭐ Get my approaches (for experts)
-router.get('/my-approaches', protect, authorize('expert'), async (req, res) => {
+// ─── GET ALL APPROACHES (EXPERT: THEIR OWN, CLIENT: FOR THEIR REQUESTS) ───
+router.get('/', protect, async (req, res) => {
   try {
-    const { status } = req.query;
+    let query = {};
     
-    const query = { expert: req.user.id };
-    if (status) query.status = status;
+    if (req.user.role === 'expert') {
+      query.expert = req.user.id;
+    } else if (req.user.role === 'client') {
+      query.client = req.user.id;
+    }
     
     const approaches = await Approach.find(query)
-      .populate('request', 'title service location budget timeline status')
+      .populate('request', 'title service description budget location')
+      .populate('expert', 'name specialization rating reviewCount profilePhoto')
+      .populate('client', 'name email phone')
       .sort('-createdAt')
-      .lean();
+      .limit(100);
     
-    res.json({ 
-      success: true, 
-      count: approaches.length, 
-      approaches: approaches.map(a => ({
-        _id: a._id,
-        requestId: a.request?._id,
-        requestTitle: a.request?.title || 'Request',
-        service: a.request?.service,
-        message: a.message,
-        quote: a.quote,
-        status: a.status,
-        creditsSpent: a.creditsSpent,
-        documentAccessGranted: a.documentAccessGranted,
-        isWorkCompleted: a.isWorkCompleted,
-        hasBeenRated: a.hasBeenRated,
-        createdAt: a.createdAt
-      }))
-    });
-    
-  } catch (error) {
-    console.error('Get approaches error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error fetching approaches' 
-    });
-  }
-});
-
-// Get all approaches (kept for backward compatibility)
-router.get('/', protect, authorize('expert'), async (req, res) => {
-  try {
-    const approaches = await Approach.find({ expert: req.user.id })
-      .populate('request', 'title service location budget timeline status')
-      .sort('-createdAt');
+    console.log(`✅ Found ${approaches.length} approaches for ${req.user.role} ${req.user.id}`);
     
     res.json({ 
       success: true, 
@@ -147,7 +123,7 @@ router.get('/', protect, authorize('expert'), async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Get approaches error:', error);
+    console.error('❌ Get approaches error:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Error fetching approaches' 
@@ -155,12 +131,13 @@ router.get('/', protect, authorize('expert'), async (req, res) => {
   }
 });
 
-// ⭐ Get single approach
+// ─── GET SINGLE APPROACH ───
 router.get('/:id', protect, async (req, res) => {
   try {
     const approach = await Approach.findById(req.params.id)
-      .populate('request')
-      .populate('expert', 'name specialization rating reviewCount profilePhoto bio');
+      .populate('request', 'title service description budget location answers')
+      .populate('expert', 'name specialization rating reviewCount profilePhoto email phone')
+      .populate('client', 'name email phone');
     
     if (!approach) {
       return res.status(404).json({ 
@@ -170,23 +147,19 @@ router.get('/:id', protect, async (req, res) => {
     }
     
     // Check authorization
-    const isExpert = approach.expert._id.toString() === req.user.id;
-    const isClient = approach.request.client.toString() === req.user.id;
-    
-    if (!isExpert && !isClient) {
+    if (approach.expert._id.toString() !== req.user.id && approach.client._id.toString() !== req.user.id) {
       return res.status(403).json({ 
         success: false, 
         message: 'Not authorized' 
       });
     }
     
-    res.json({ 
-      success: true, 
-      approach 
-    });
+    console.log(`✅ Approach ${req.params.id} retrieved`);
+    
+    res.json({ success: true, approach });
     
   } catch (error) {
-    console.error('Get approach error:', error);
+    console.error('❌ Get approach error:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Error fetching approach' 
@@ -194,13 +167,12 @@ router.get('/:id', protect, async (req, res) => {
   }
 });
 
-// ⭐ Update approach status (client accepts/rejects)
+// ─── UPDATE APPROACH STATUS (CLIENT ONLY) ───
 router.put('/:id/status', protect, authorize('client'), async (req, res) => {
   try {
     const { status } = req.body;
     
-    const approach = await Approach.findById(req.params.id)
-      .populate('request');
+    const approach = await Approach.findById(req.params.id);
     
     if (!approach) {
       return res.status(404).json({ 
@@ -209,7 +181,8 @@ router.put('/:id/status', protect, authorize('client'), async (req, res) => {
       });
     }
     
-    if (approach.request.client.toString() !== req.user.id) {
+    // Verify ownership
+    if (approach.client.toString() !== req.user.id) {
       return res.status(403).json({ 
         success: false, 
         message: 'Not authorized' 
@@ -217,24 +190,27 @@ router.put('/:id/status', protect, authorize('client'), async (req, res) => {
     }
     
     approach.status = status;
-    approach.respondedAt = Date.now();
     
-    // If accepted, update request
     if (status === 'accepted') {
-      approach.request.acceptedExpert = approach.expert;
-      approach.request.status = 'active';
-      await approach.request.save();
+      approach.acceptedAt = new Date();
+      
+      // Update request with accepted expert
+      const request = await Request.findById(approach.request);
+      if (request) {
+        request.acceptedExpert = approach.expert;
+        request.status = 'active';
+        await request.save();
+      }
     }
     
     await approach.save();
     
-    res.json({ 
-      success: true, 
-      approach 
-    });
+    console.log(`✅ Approach ${req.params.id} status updated to ${status}`);
+    
+    res.json({ success: true, approach });
     
   } catch (error) {
-    console.error('Update approach status error:', error);
+    console.error('❌ Update approach status error:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Error updating approach status' 
@@ -242,8 +218,8 @@ router.put('/:id/status', protect, authorize('client'), async (req, res) => {
   }
 });
 
-// ⭐ NEW: Request document access
-router.post('/:id/request-document-access', protect, authorize('expert'), async (req, res) => {
+// ─── DELETE APPROACH ───
+router.delete('/:id', protect, async (req, res) => {
   try {
     const approach = await Approach.findById(req.params.id);
     
@@ -254,6 +230,7 @@ router.post('/:id/request-document-access', protect, authorize('expert'), async 
       });
     }
     
+    // Only expert who created it can delete
     if (approach.expert.toString() !== req.user.id) {
       return res.status(403).json({ 
         success: false, 
@@ -261,105 +238,20 @@ router.post('/:id/request-document-access', protect, authorize('expert'), async 
       });
     }
     
-    if (approach.documentAccessRequested) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Access already requested' 
-      });
-    }
+    await approach.deleteOne();
     
-    approach.documentAccessRequested = true;
-    approach.documentAccessRequestedAt = Date.now();
-    await approach.save();
+    console.log(`✅ Approach ${req.params.id} deleted`);
     
     res.json({ 
       success: true, 
-      message: 'Document access requested',
-      approach 
+      message: 'Approach deleted' 
     });
     
   } catch (error) {
-    console.error('Request document access error:', error);
+    console.error('❌ Delete approach error:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Error requesting document access' 
-    });
-  }
-});
-
-// ⭐ NEW: Grant document access (client approves)
-router.post('/:id/grant-document-access', protect, authorize('client'), async (req, res) => {
-  try {
-    const approach = await Approach.findById(req.params.id)
-      .populate('request');
-    
-    if (!approach) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Approach not found' 
-      });
-    }
-    
-    if (approach.request.client.toString() !== req.user.id) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Not authorized' 
-      });
-    }
-    
-    approach.documentAccessGranted = true;
-    approach.documentAccessGrantedAt = Date.now();
-    await approach.save();
-    
-    res.json({ 
-      success: true, 
-      message: 'Document access granted',
-      approach 
-    });
-    
-  } catch (error) {
-    console.error('Grant document access error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error granting document access' 
-    });
-  }
-});
-
-// ⭐ NEW: Mark work as completed
-router.post('/:id/complete', protect, authorize('expert'), async (req, res) => {
-  try {
-    const approach = await Approach.findById(req.params.id);
-    
-    if (!approach) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Approach not found' 
-      });
-    }
-    
-    if (approach.expert.toString() !== req.user.id) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Not authorized' 
-      });
-    }
-    
-    approach.isWorkCompleted = true;
-    approach.completedAt = Date.now();
-    await approach.save();
-    
-    res.json({ 
-      success: true, 
-      message: 'Work marked as completed',
-      approach 
-    });
-    
-  } catch (error) {
-    console.error('Complete work error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error marking work as completed' 
+      message: 'Error deleting approach' 
     });
   }
 });
