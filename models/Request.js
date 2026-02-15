@@ -4,38 +4,42 @@ const requestSchema = new mongoose.Schema({
   client: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: [true, 'Client is required']
   },
   title: {
     type: String,
-    required: true
+    required: [true, 'Title is required'],
+    trim: true
   },
   service: {
     type: String,
-    required: true,
+    required: [true, 'Service is required'],
     enum: ['itr', 'gst', 'accounting', 'audit', 'photography', 'development']
   },
   category: String,
   description: {
     type: String,
-    required: true
+    required: [true, 'Description is required']
   },
   answers: {
-    type: mongoose.Schema.Types.Mixed,
-    required: true
+    type: mongoose.Schema.Types.Mixed,  // ← CRITICAL: Allows flexible questionnaire structure
+    default: {}
   },
   timeline: {
     type: String,
-    enum: ['immediate', 'week', 'month', 'flexible'],
+    enum: ['immediate', '2-3days', 'week', 'month', 'flexible'],
     default: 'flexible'
   },
-  budget: String,
+  budget: {
+    type: String,
+    default: '0'
+  },
   location: {
     type: String,
-    required: true
+    required: [true, 'Location is required']
   },
   
-  // ⭐ NEW: Attached Documents
+  // Attached Documents
   documents: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Document'
@@ -44,7 +48,8 @@ const requestSchema = new mongoose.Schema({
   credits: {
     type: Number,
     required: true,
-    min: 1
+    min: 1,
+    default: 20
   },
   status: {
     type: String,
@@ -52,14 +57,14 @@ const requestSchema = new mongoose.Schema({
     default: 'pending'
   },
   
-  // ⭐ NEW: Accepted Expert
+  // Accepted Expert
   acceptedExpert: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     default: null
   },
   
-  // ⭐ NEW: Completion Status
+  // Completion Status
   isCompleted: {
     type: Boolean,
     default: false
@@ -71,18 +76,34 @@ const requestSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  approachCount: {
+    type: Number,
+    default: 0
+  },
   viewCount: {
     type: Number,
     default: 0
   }
 }, {
-  timestamps: true
+  timestamps: true  // Adds createdAt and updatedAt
 });
 
-// Indexes
+// Indexes for faster queries
 requestSchema.index({ client: 1, createdAt: -1 });
 requestSchema.index({ service: 1, status: 1 });
 requestSchema.index({ status: 1, createdAt: -1 });
 requestSchema.index({ location: 1 });
+
+// Virtual for approach count (if you want to calculate dynamically)
+requestSchema.virtual('approaches', {
+  ref: 'Approach',
+  localField: '_id',
+  foreignField: 'request',
+  count: true
+});
+
+// Ensure virtuals are included when converting to JSON
+requestSchema.set('toJSON', { virtuals: true });
+requestSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('Request', requestSchema);
