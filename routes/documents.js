@@ -6,16 +6,8 @@ const { protect } = require('../middleware/auth');
 const Document = require('../models/Document');
 const AccessRequest = require('../models/AccessRequest');
 
-// ⭐ Configure multer for document uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/documents/');
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'doc-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// ✅ FIXED: Use memory storage instead of disk storage
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
@@ -44,34 +36,47 @@ function getFileType(mimetype, ext) {
   return 'other';
 }
 
-// ⭐ Upload document
+// ✅ FIXED: Upload document with base64 storage
 router.post('/upload', protect, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
+      console.log('❌ No file in request');
       return res.status(400).json({ 
         success: false, 
         message: 'No file uploaded' 
       });
     }
     
+    console.log('📄 Uploading document:');
+    console.log('  User:', req.user.id);
+    console.log('  Filename:', req.file.originalname);
+    console.log('  Size:', req.file.size);
+    console.log('  Mimetype:', req.file.mimetype);
+    
     const { description, category, requestId, isPublic } = req.body;
     
     const ext = path.extname(req.file.originalname).toLowerCase();
     const fileType = getFileType(req.file.mimetype, ext);
     
+    // Convert to base64
+    const base64File = req.file.buffer.toString('base64');
+    const dataURI = `data:${req.file.mimetype};base64,${base64File}`;
+    
     const document = await Document.create({
       owner: req.user.id,
       request: requestId || null,
-      fileName: req.file.filename,
+      fileName: `doc-${Date.now()}${ext}`,
       originalFileName: req.file.originalname,
       fileType,
       mimeType: req.file.mimetype,
       fileSize: req.file.size,
-      fileUrl: '/uploads/documents/' + req.file.filename,
+      fileUrl: dataURI,  // Store as base64
       description: description || '',
       category: category || 'other',
       isPublic: isPublic === 'true' || false
     });
+    
+    console.log('✅ Document uploaded:', document._id);
     
     res.json({
       success: true,
@@ -86,7 +91,7 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Upload document error:', error);
+    console.error('❌ Upload document error:', error);
     res.status(500).json({ 
       success: false, 
       message: error.message || 'Error uploading document' 
@@ -94,7 +99,7 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
   }
 });
 
-// ⭐ Get my documents
+// Get my documents
 router.get('/my-documents', protect, async (req, res) => {
   try {
     const { category, requestId } = req.query;
@@ -108,13 +113,15 @@ router.get('/my-documents', protect, async (req, res) => {
       .sort('-createdAt')
       .lean();
     
+    console.log(`✅ Found ${documents.length} documents for user ${req.user.id}`);
+    
     res.json({
       success: true,
       count: documents.length,
       documents
     });
   } catch (error) {
-    console.error('Get documents error:', error);
+    console.error('❌ Get documents error:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Error fetching documents' 
@@ -122,7 +129,7 @@ router.get('/my-documents', protect, async (req, res) => {
   }
 });
 
-// ⭐ Get single document (with access control)
+// Get single document
 router.get('/:id', protect, async (req, res) => {
   try {
     const document = await Document.findById(req.params.id)
@@ -136,7 +143,6 @@ router.get('/:id', protect, async (req, res) => {
       });
     }
     
-    // Check access
     const isOwner = document.owner._id.toString() === req.user.id;
     const hasAccess = document.grantedAccess.some(
       access => access.expert.toString() === req.user.id
@@ -150,7 +156,6 @@ router.get('/:id', protect, async (req, res) => {
       });
     }
     
-    // Increment view count
     document.viewCount += 1;
     await document.save();
     
@@ -170,7 +175,7 @@ router.get('/:id', protect, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get document error:', error);
+    console.error('❌ Get document error:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Error fetching document' 
@@ -178,49 +183,7 @@ router.get('/:id', protect, async (req, res) => {
   }
 });
 
-// ⭐ Download document (with access control)
-router.get('/:id/download', protect, async (req, res) => {
-  try {
-    const document = await Document.findById(req.params.id);
-    
-    if (!document) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Document not found' 
-      });
-    }
-    
-    // Check access
-    const isOwner = document.owner.toString() === req.user.id;
-    const hasAccess = document.grantedAccess.some(
-      access => access.expert.toString() === req.user.id
-    );
-    
-    if (!isOwner && !hasAccess && !document.isPublic) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Access denied' 
-      });
-    }
-    
-    // Increment download count
-    document.downloadCount += 1;
-    await document.save();
-    
-    // Send file
-    const filePath = path.join(__dirname, '..', document.fileUrl);
-    res.download(filePath, document.originalFileName);
-    
-  } catch (error) {
-    console.error('Download document error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error downloading document' 
-    });
-  }
-});
-
-// ⭐ Delete document
+// Delete document
 router.delete('/:id', protect, async (req, res) => {
   try {
     const document = await Document.findById(req.params.id);
@@ -239,19 +202,16 @@ router.delete('/:id', protect, async (req, res) => {
       });
     }
     
-    // Delete file from disk (optional - be careful)
-    // const fs = require('fs');
-    // const filePath = path.join(__dirname, '..', document.fileUrl);
-    // fs.unlinkSync(filePath);
-    
     await document.deleteOne();
+    
+    console.log(`✅ Document ${req.params.id} deleted`);
     
     res.json({
       success: true,
       message: 'Document deleted successfully'
     });
   } catch (error) {
-    console.error('Delete document error:', error);
+    console.error('❌ Delete document error:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Error deleting document' 
@@ -259,7 +219,7 @@ router.delete('/:id', protect, async (req, res) => {
   }
 });
 
-// ⭐ Update document details
+// Update document details
 router.put('/:id', protect, async (req, res) => {
   try {
     const { description, category, isPublic } = req.body;
@@ -292,7 +252,7 @@ router.put('/:id', protect, async (req, res) => {
       document
     });
   } catch (error) {
-    console.error('Update document error:', error);
+    console.error('❌ Update document error:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Error updating document' 
@@ -300,7 +260,7 @@ router.put('/:id', protect, async (req, res) => {
   }
 });
 
-// ⭐ Get documents for a specific request (with access control)
+// Get documents for a specific request
 router.get('/request/:requestId', protect, async (req, res) => {
   try {
     const documents = await Document.find({ 
@@ -309,7 +269,6 @@ router.get('/request/:requestId', protect, async (req, res) => {
     .populate('owner', 'name')
     .lean();
     
-    // Filter based on access
     const accessibleDocs = documents.map(doc => {
       const isOwner = doc.owner._id.toString() === req.user.id;
       const hasAccess = doc.grantedAccess?.some(
@@ -329,7 +288,7 @@ router.get('/request/:requestId', protect, async (req, res) => {
       documents: accessibleDocs
     });
   } catch (error) {
-    console.error('Get request documents error:', error);
+    console.error('❌ Get request documents error:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Error fetching documents' 
