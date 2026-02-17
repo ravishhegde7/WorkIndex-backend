@@ -169,7 +169,7 @@ router.get('/my-documents', protect, async (req, res) => {
       .sort('-createdAt')
       .lean();
     
-    console.log(`✅ Found ${documents.length} documents for user ${req.user.id}`);
+    console.log('✅ Found ' + documents.length + ' documents for user ' + req.user.id);
     
     res.json({
       success: true,
