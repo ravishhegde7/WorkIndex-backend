@@ -64,6 +64,7 @@ router.get('/available', protect, authorize('expert'), async (req, res) => {
       title: r.title,
       description: r.description,
       service: r.service,
+      client: r.client,
       timeline: r.timeline,
       location: r.location,
       budget: r.budget,
