@@ -127,11 +127,7 @@ console.log('✅ Approach found, fetching documents');
 
 // Broader query — get ALL docs for this client+request combo
 const documents = await Document.find({
-  owner: clientId,
-  $or: [
-    { request: requestId },
-    { request: null }
-  ]
+  owner: clientId
 }).lean();
 
 console.log(`✅ Found ${documents.length} raw documents`);
