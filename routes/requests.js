@@ -34,12 +34,13 @@ router.get('/available', protect, authorize('expert'), async (req, res) => {
     const approachedRequestIds = myApproaches.map(a => a.request.toString());
 
     const requests = await Request.find({
-      _id: { $nin: approachedRequestIds },
-      status: { $in: ['pending', 'active'] }
-    })
-    .sort('-createdAt')
-    .limit(50)
-    .lean();
+  _id: { $nin: approachedRequestIds },
+  status: { $in: ['pending', 'active'] }
+})
+.sort('-createdAt')
+.limit(50)
+.populate('client', 'name')
+.lean();
 
     // ✅ NEW: Get approach counts for all requests
     const requestIds = requests.map(r => r._id);
