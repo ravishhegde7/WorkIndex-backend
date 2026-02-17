@@ -7,7 +7,6 @@ const Document = require('../models/Document');
 const AccessRequest = require('../models/AccessRequest');
 const Approach = require('../models/Approach');
 
-// ✅ Use memory storage
 const storage = multer.memoryStorage();
 
 const upload = multer({
@@ -19,7 +18,6 @@ const upload = multer({
     const mimetype = allowedTypes.test(file.mimetype) || 
                      file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
                      file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    
     if (mimetype && extname) {
       return cb(null, true);
     } else {
@@ -36,34 +34,23 @@ function getFileType(mimetype, ext) {
   return 'other';
 }
 
-// Upload document
+// UPLOAD DOCUMENT
 router.post('/upload', protect, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
-      console.log('❌ No file in request');
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No file uploaded' 
-      });
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
     
-    console.log('📄 Uploading document:');
-    console.log('  User:', req.user.id);
-    console.log('  Filename:', req.file.originalname);
-    console.log('  Size:', req.file.size);
-    
     const { description, category, requestId, isPublic } = req.body;
-    
     const ext = path.extname(req.file.originalname).toLowerCase();
     const fileType = getFileType(req.file.mimetype, ext);
-    
     const base64File = req.file.buffer.toString('base64');
-    const dataURI = `data:${req.file.mimetype};base64,${base64File}`;
+    const dataURI = 'data:' + req.file.mimetype + ';base64,' + base64File;
     
     const document = await Document.create({
       owner: req.user.id,
       request: requestId || null,
-      fileName: `doc-${Date.now()}${ext}`,
+      fileName: 'doc-' + Date.now() + ext,
       originalFileName: req.file.originalname,
       fileType,
       mimeType: req.file.mimetype,
@@ -74,7 +61,7 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
       isPublic: isPublic === 'true' || false
     });
     
-    console.log('✅ Document uploaded:', document._id);
+    console.log('Document uploaded:', document._id);
     
     res.json({
       success: true,
@@ -89,20 +76,15 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Upload document error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message || 'Error uploading document' 
-    });
+    console.error('Upload document error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Error uploading document' });
   }
 });
 
-// ✅ FIXED: Get client documents (for experts who approached)
+// GET CLIENT DOCUMENTS FOR EXPERT (with access control)
 router.get('/client/:clientId/request/:requestId', protect, authorize('expert'), async (req, res) => {
   try {
     const { clientId, requestId } = req.params;
-
-    console.log('📄 Expert requesting client documents:', req.user.id);
 
     const approach = await Approach.findOne({
       expert: req.user.id,
@@ -118,14 +100,14 @@ router.get('/client/:clientId/request/:requestId', protect, authorize('expert'),
 
     const documents = await Document.find({ owner: clientId }).lean();
 
-    console.log(`✅ Found ${documents.length} documents`);
+    console.log('Found ' + documents.length + ' documents for client ' + clientId);
 
     const expertId = req.user.id.toString();
 
-    const documentsWithAccess = documents.map(doc => {
-      const hasAccess = doc.isPublic || doc.grantedAccess?.some(
-        a => a.expert.toString() === expertId
-      );
+    const documentsWithAccess = documents.map(function(doc) {
+      var hasAccess = doc.isPublic || (doc.grantedAccess && doc.grantedAccess.some(function(a) {
+        return a.expert.toString() === expertId;
+      }));
       return {
         _id: doc._id,
         originalFileName: doc.originalFileName,
@@ -134,7 +116,7 @@ router.get('/client/:clientId/request/:requestId', protect, authorize('expert'),
         category: doc.category,
         uploadedAt: doc.createdAt,
         isPublic: doc.isPublic,
-        hasAccess,
+        hasAccess: hasAccess,
         fileUrl: hasAccess ? doc.fileUrl : null
       };
     });
@@ -147,19 +129,15 @@ router.get('/client/:clientId/request/:requestId', protect, authorize('expert'),
     });
 
   } catch (error) {
-    console.error('❌ Get client documents error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching documents'
-    });
+    console.error('Get client documents error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching documents' });
   }
 });
-```
-// Get my documents
+
+// GET MY DOCUMENTS
 router.get('/my-documents', protect, async (req, res) => {
   try {
     const { category, requestId } = req.query;
-    
     const query = { owner: req.user.id };
     if (category) query.category = category;
     if (requestId) query.request = requestId;
@@ -169,23 +147,16 @@ router.get('/my-documents', protect, async (req, res) => {
       .sort('-createdAt')
       .lean();
     
-    console.log('✅ Found ' + documents.length + ' documents for user ' + req.user.id);
+    console.log('Found ' + documents.length + ' documents for user ' + req.user.id);
     
-    res.json({
-      success: true,
-      count: documents.length,
-      documents
-    });
+    res.json({ success: true, count: documents.length, documents });
   } catch (error) {
-    console.error('❌ Get documents error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error fetching documents' 
-    });
+    console.error('Get documents error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching documents' });
   }
 });
 
-// Get single document
+// GET SINGLE DOCUMENT
 router.get('/:id', protect, async (req, res) => {
   try {
     const document = await Document.findById(req.params.id)
@@ -193,15 +164,12 @@ router.get('/:id', protect, async (req, res) => {
       .populate('request', 'title');
     
     if (!document) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Document not found' 
-      });
+      return res.status(404).json({ success: false, message: 'Document not found' });
     }
     
     const isOwner = document.owner._id.toString() === req.user.id;
     const hasAccess = document.grantedAccess.some(
-      access => access.expert.toString() === req.user.id
+      function(access) { return access.expert.toString() === req.user.id; }
     );
     
     if (!isOwner && !hasAccess && !document.isPublic) {
@@ -231,69 +199,45 @@ router.get('/:id', protect, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Get document error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error fetching document' 
-    });
+    console.error('Get document error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching document' });
   }
 });
 
-// Delete document
+// DELETE DOCUMENT
 router.delete('/:id', protect, async (req, res) => {
   try {
     const document = await Document.findById(req.params.id);
     
     if (!document) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Document not found' 
-      });
+      return res.status(404).json({ success: false, message: 'Document not found' });
     }
     
     if (document.owner.toString() !== req.user.id) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Not authorized' 
-      });
+      return res.status(403).json({ success: false, message: 'Not authorized' });
     }
     
     await document.deleteOne();
-    
-    console.log(`✅ Document ${req.params.id} deleted`);
-    
-    res.json({
-      success: true,
-      message: 'Document deleted successfully'
-    });
+    console.log('Document deleted:', req.params.id);
+    res.json({ success: true, message: 'Document deleted successfully' });
   } catch (error) {
-    console.error('❌ Delete document error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error deleting document' 
-    });
+    console.error('Delete document error:', error);
+    res.status(500).json({ success: false, message: 'Error deleting document' });
   }
 });
 
-// Update document details
+// UPDATE DOCUMENT
 router.put('/:id', protect, async (req, res) => {
   try {
     const { description, category, isPublic } = req.body;
-    
     const document = await Document.findById(req.params.id);
     
     if (!document) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Document not found' 
-      });
+      return res.status(404).json({ success: false, message: 'Document not found' });
     }
     
     if (document.owner.toString() !== req.user.id) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Not authorized' 
-      });
+      return res.status(403).json({ success: false, message: 'Not authorized' });
     }
     
     if (description !== undefined) document.description = description;
@@ -301,36 +245,25 @@ router.put('/:id', protect, async (req, res) => {
     if (isPublic !== undefined) document.isPublic = isPublic;
     
     await document.save();
-    
-    res.json({
-      success: true,
-      message: 'Document updated successfully',
-      document
-    });
+    res.json({ success: true, message: 'Document updated successfully', document });
   } catch (error) {
-    console.error('❌ Update document error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error updating document' 
-    });
+    console.error('Update document error:', error);
+    res.status(500).json({ success: false, message: 'Error updating document' });
   }
 });
 
-// Get documents for a specific request
+// GET DOCUMENTS FOR A REQUEST
 router.get('/request/:requestId', protect, async (req, res) => {
   try {
-    const documents = await Document.find({ 
-      request: req.params.requestId 
-    })
-    .populate('owner', 'name')
-    .lean();
+    const documents = await Document.find({ request: req.params.requestId })
+      .populate('owner', 'name')
+      .lean();
     
-    const accessibleDocs = documents.map(doc => {
-      const isOwner = doc.owner._id.toString() === req.user.id;
-      const hasAccess = doc.grantedAccess?.some(
-        access => access.expert.toString() === req.user.id
-      );
-      
+    const accessibleDocs = documents.map(function(doc) {
+      var isOwner = doc.owner._id.toString() === req.user.id;
+      var hasAccess = doc.grantedAccess && doc.grantedAccess.some(function(access) {
+        return access.expert.toString() === req.user.id;
+      });
       return {
         ...doc,
         canAccess: isOwner || hasAccess || doc.isPublic,
@@ -338,17 +271,10 @@ router.get('/request/:requestId', protect, async (req, res) => {
       };
     });
     
-    res.json({
-      success: true,
-      count: accessibleDocs.length,
-      documents: accessibleDocs
-    });
+    res.json({ success: true, count: accessibleDocs.length, documents: accessibleDocs });
   } catch (error) {
-    console.error('❌ Get request documents error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error fetching documents' 
-    });
+    console.error('Get request documents error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching documents' });
   }
 });
 
