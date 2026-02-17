@@ -349,10 +349,15 @@ router.get('/experts', async (req, res) => {
 // Get single expert public profile
 router.get('/expert/:id', async (req, res) => {
   try {
-    const expert = await User.findById(req.params.id)
-      .select('name profilePhoto specialization qualifications rating reviewCount bio portfolio location companyName servicesOffered certifications yearsOfExperience createdAt');
+    // ✅ Filter by role directly in DB query instead of checking after fetch
+    const expert = await User.findOne({ 
+      _id: req.params.id, 
+      role: 'expert'
+    })
+    .select('name profilePhoto specialization qualifications rating reviewCount bio portfolio location companyName servicesOffered certifications yearsOfExperience createdAt')
+    .lean();
     
-    if (!expert || expert.role !== 'expert') {
+    if (!expert) {
       return res.status(404).json({ 
         success: false, 
         message: 'Expert not found' 
@@ -382,5 +387,4 @@ router.get('/expert/:id', async (req, res) => {
     });
   }
 });
-
 module.exports = router;
