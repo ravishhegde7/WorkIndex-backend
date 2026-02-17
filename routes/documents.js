@@ -98,6 +98,7 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
 });
 
 // ✅ FIXED: Get client documents (for experts who approached)
+// ─── GET CLIENT DOCUMENTS (for experts who approached) ───
 router.get(’/client/:clientId/request/:requestId’, protect, authorize(‘expert’), async (req, res) => {
 try {
 const { clientId, requestId } = req.params;
@@ -124,25 +125,23 @@ if (!approach) {
 
 console.log('✅ Approach found, fetching documents');
 
-// ✅ FIXED: Broader query — get ALL docs for this client+request combo
+// Broader query — get ALL docs for this client+request combo
 const documents = await Document.find({
   owner: clientId,
   $or: [
-    { request: requestId },   // docs linked to this specific request
-    { request: null },        // docs not linked to any request (general docs)
+    { request: requestId },
+    { request: null }
   ]
 }).lean();
 
 console.log(`✅ Found ${documents.length} raw documents`);
 
-// ✅ Add access info per document so frontend can show lock/unlock state
 const expertId = req.user.id.toString();
 
 const documentsWithAccess = documents.map(doc => {
   const hasAccess = doc.isPublic || doc.grantedAccess?.some(
     a => a.expert.toString() === expertId
   );
-
   return {
     _id: doc._id,
     originalFileName: doc.originalFileName,
@@ -153,15 +152,14 @@ const documentsWithAccess = documents.map(doc => {
     uploadedAt: doc.createdAt,
     isPublic: doc.isPublic,
     hasAccess,
-    // ✅ Only send fileUrl if access has been granted
-    fileUrl: hasAccess ? doc.fileUrl : null,
+    fileUrl: hasAccess ? doc.fileUrl : null
   };
 });
 
 res.json({
   success: true,
   count: documentsWithAccess.length,
-  approachId: approach._id,   // ✅ send approachId so frontend can use it for access requests
+  approachId: approach._id,
   documents: documentsWithAccess
 });
 ```
@@ -174,7 +172,6 @@ message: ‘Error fetching documents’
 });
 }
 });
-
 // Get my documents
 router.get('/my-documents', protect, async (req, res) => {
   try {
