@@ -277,5 +277,55 @@ router.get('/request/:requestId', protect, async (req, res) => {
     res.status(500).json({ success: false, message: 'Error fetching documents' });
   }
 });
+// REQUEST ACCESS TO A DOCUMENT
+router.post('/:documentId/request-access', protect, authorize('expert'), async (req, res) => {
+  try {
+    var documentId = req.params.documentId;
+    var message = req.body.message || 'I would like to access this document.';
+
+    var document = await Document.findById(documentId);
+    if (!document) {
+      return res.status(404).json({ success: false, message: 'Document not found' });
+    }
+
+    // Check if already requested
+    var existing = await AccessRequest.findOne({
+      document: documentId,
+      expert: req.user.id
+    });
+
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: 'Access already requested',
+        status: existing.status
+      });
+    }
+
+    // Create access request
+    var accessRequest = await AccessRequest.create({
+      document: documentId,
+      expert: req.user.id,
+      client: document.owner,
+      message: message,
+      status: 'pending'
+    });
+
+    console.log('Access request created:', accessRequest._id);
+
+    res.json({
+      success: true,
+      message: 'Access request sent to client!',
+      accessRequest: {
+        id: accessRequest._id,
+        status: accessRequest.status
+      }
+    });
+
+  } catch (error) {
+    console.error('Request access error:', error);
+    res.status(500).json({ success: false, message: 'Error creating access request' });
+  }
+});
 
 module.exports = router;
