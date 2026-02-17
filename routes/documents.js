@@ -103,7 +103,6 @@ router.get(’/client/:clientId/request/:requestId’, protect, authorize(‘exp
 try {
 const { clientId, requestId } = req.params;
 
-```
 console.log('📄 Expert requesting client documents:');
 console.log('  Expert:', req.user.id);
 console.log('  Client:', clientId);
@@ -158,7 +157,6 @@ res.json({
   approachId: approach._id,
   documents: documentsWithAccess
 });
-```
 
 } catch (error) {
 console.error(‘❌ Get client documents error:’, error);
