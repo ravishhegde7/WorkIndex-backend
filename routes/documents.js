@@ -97,56 +97,82 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
   }
 });
 
-// ✅ NEW: Get client documents (for experts who approached)
-router.get('/client/:clientId/request/:requestId', protect, authorize('expert'), async (req, res) => {
-  try {
-    const { clientId, requestId } = req.params;
-    
-    console.log('📄 Expert requesting client documents:');
-    console.log('  Expert:', req.user.id);
-    console.log('  Client:', clientId);
-    console.log('  Request:', requestId);
-    
-    // Check if expert has approached this request
-    const approach = await Approach.findOne({
-      expert: req.user.id,
-      request: requestId
-    });
-    
-    if (!approach) {
-      console.log('❌ Expert has not approached this request');
-      return res.status(403).json({
-        success: false,
-        message: 'You must approach this request first to view documents'
-      });
-    }
-    
-    console.log('✅ Approach found, fetching documents');
-    
-    // Get documents for this client/request
-    const documents = await Document.find({
-      owner: clientId,
-      $or: [
-        { request: requestId },
-        { request: null, isPublic: true }
-      ]
-    }).lean();
-    
-    console.log(`✅ Found ${documents.length} documents`);
-    
-    res.json({
-      success: true,
-      count: documents.length,
-      documents
-    });
-    
-  } catch (error) {
-    console.error('❌ Get client documents error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching documents'
-    });
-  }
+// ✅ FIXED: Get client documents (for experts who approached)
+router.get(’/client/:clientId/request/:requestId’, protect, authorize(‘expert’), async (req, res) => {
+try {
+const { clientId, requestId } = req.params;
+
+```
+console.log('📄 Expert requesting client documents:');
+console.log('  Expert:', req.user.id);
+console.log('  Client:', clientId);
+console.log('  Request:', requestId);
+
+// Check if expert has approached this request
+const approach = await Approach.findOne({
+  expert: req.user.id,
+  request: requestId
+});
+
+if (!approach) {
+  console.log('❌ Expert has not approached this request');
+  return res.status(403).json({
+    success: false,
+    message: 'You must approach this request first to view documents'
+  });
+}
+
+console.log('✅ Approach found, fetching documents');
+
+// ✅ FIXED: Broader query — get ALL docs for this client+request combo
+const documents = await Document.find({
+  owner: clientId,
+  $or: [
+    { request: requestId },   // docs linked to this specific request
+    { request: null },        // docs not linked to any request (general docs)
+  ]
+}).lean();
+
+console.log(`✅ Found ${documents.length} raw documents`);
+
+// ✅ Add access info per document so frontend can show lock/unlock state
+const expertId = req.user.id.toString();
+
+const documentsWithAccess = documents.map(doc => {
+  const hasAccess = doc.isPublic || doc.grantedAccess?.some(
+    a => a.expert.toString() === expertId
+  );
+
+  return {
+    _id: doc._id,
+    originalFileName: doc.originalFileName,
+    fileType: doc.fileType,
+    fileSize: doc.fileSize,
+    description: doc.description,
+    category: doc.category,
+    uploadedAt: doc.createdAt,
+    isPublic: doc.isPublic,
+    hasAccess,
+    // ✅ Only send fileUrl if access has been granted
+    fileUrl: hasAccess ? doc.fileUrl : null,
+  };
+});
+
+res.json({
+  success: true,
+  count: documentsWithAccess.length,
+  approachId: approach._id,   // ✅ send approachId so frontend can use it for access requests
+  documents: documentsWithAccess
+});
+```
+
+} catch (error) {
+console.error(‘❌ Get client documents error:’, error);
+res.status(500).json({
+success: false,
+message: ‘Error fetching documents’
+});
+}
 });
 
 // Get my documents
