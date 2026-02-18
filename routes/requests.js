@@ -426,5 +426,11 @@ router.post('/:id/complete', protect, authorize('client'), async (req, res) => {
     });
   }
 });
+router.get('/test-approach-update', protect, async (req, res) => {
+  res.json({ 
+    message: 'Approach update code is deployed',
+    timestamp: new Date().toISOString()
+  });
+});
 
 module.exports = router;
