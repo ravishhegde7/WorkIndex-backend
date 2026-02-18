@@ -375,6 +375,9 @@ router.post('/:id/complete', protect, authorize('client'), async (req, res) => {
   try {
     const { expertId } = req.body;
     
+    console.log('🔍 Completing request:', req.params.id);
+    console.log('   Expert ID from body:', expertId);
+    
     const request = await Request.findById(req.params.id);
     
     if (!request) {
@@ -399,18 +402,35 @@ router.post('/:id/complete', protect, authorize('client'), async (req, res) => {
     }
     await request.save();
     
-    // ✅ NEW: Also mark the approach as work completed
+    console.log('✅ Request status updated to completed');
+    
+    // Mark the approach as work completed
     if (expertId) {
-      await Approach.findOneAndUpdate(
+      console.log('🔍 Looking for approach:', { expert: expertId, request: req.params.id });
+      
+      const allApproaches = await Approach.find({ request: req.params.id }).lean();
+      console.log('📋 All approaches for this request:', allApproaches.length);
+      allApproaches.forEach((a, i) => {
+        console.log(`   Approach ${i+1}: expert=${a.expert.toString()}, match=${a.expert.toString() === expertId}`);
+      });
+      
+      const approach = await Approach.findOneAndUpdate(
         { expert: expertId, request: req.params.id },
         { 
           isWorkCompleted: true,
           workCompletedAt: Date.now()
-        }
+        },
+        { new: true }
       );
+      
+      if (approach) {
+        console.log('✅ Approach found and updated! isWorkCompleted:', approach.isWorkCompleted);
+      } else {
+        console.log('❌ NO APPROACH FOUND with that expert+request combination');
+      }
+    } else {
+      console.log('⚠️ No expertId provided in request body');
     }
-    
-    console.log(`✅ Request ${req.params.id} marked as completed`);
     
     res.json({ 
       success: true, 
