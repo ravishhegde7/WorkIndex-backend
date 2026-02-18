@@ -399,6 +399,17 @@ router.post('/:id/complete', protect, authorize('client'), async (req, res) => {
     }
     await request.save();
     
+    // ✅ NEW: Also mark the approach as work completed
+    if (expertId) {
+      await Approach.findOneAndUpdate(
+        { expert: expertId, request: req.params.id },
+        { 
+          isWorkCompleted: true,
+          workCompletedAt: Date.now()
+        }
+      );
+    }
+    
     console.log(`✅ Request ${req.params.id} marked as completed`);
     
     res.json({ 
