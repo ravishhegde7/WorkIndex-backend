@@ -1,5 +1,3 @@
-const mongoose = require('mongoose');
-
 const approachSchema = new mongoose.Schema({
   request: {
     type: mongoose.Schema.Types.ObjectId,
@@ -33,8 +31,25 @@ const approachSchema = new mongoose.Schema({
   },
   contactUnlocked: {
     type: Boolean,
-    default: true  // True when expert spends credits
+    default: true
   },
+  // ✅ ADD THESE THREE FIELDS
+  isWorkCompleted: {
+    type: Boolean,
+    default: false
+  },
+  workCompletedAt: {
+    type: Date
+  },
+  hasBeenRated: {
+    type: Boolean,
+    default: false
+  },
+  rating: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Rating'
+  },
+  // ✅ END OF NEW FIELDS
   acceptedAt: Date,
   rejectedAt: Date
 }, {
@@ -42,7 +57,7 @@ const approachSchema = new mongoose.Schema({
 });
 
 // Indexes for faster queries
-approachSchema.index({ request: 1, expert: 1 }, { unique: true }); // One approach per expert per request
+approachSchema.index({ request: 1, expert: 1 }, { unique: true });
 approachSchema.index({ expert: 1, createdAt: -1 });
 approachSchema.index({ client: 1, status: 1 });
 approachSchema.index({ request: 1, createdAt: -1 });
