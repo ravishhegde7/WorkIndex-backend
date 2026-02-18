@@ -370,5 +370,50 @@ router.delete('/:id', protect, authorize('client'), async (req, res) => {
     });
   }
 });
+// ─── MARK REQUEST AS COMPLETED (CLIENT ONLY) ───
+router.post('/:id/complete', protect, authorize('client'), async (req, res) => {
+  try {
+    const { expertId } = req.body;
+    
+    const request = await Request.findById(req.params.id);
+    
+    if (!request) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Request not found' 
+      });
+    }
+    
+    if (request.client.toString() !== req.user.id) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Not authorized' 
+      });
+    }
+    
+    // Update request status
+    request.status = 'completed';
+    request.completedAt = Date.now();
+    if (expertId) {
+      request.completedBy = expertId;
+    }
+    await request.save();
+    
+    console.log(`✅ Request ${req.params.id} marked as completed`);
+    
+    res.json({ 
+      success: true, 
+      message: 'Request marked as completed',
+      request 
+    });
+    
+  } catch (error) {
+    console.error('❌ Complete request error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error completing request' 
+    });
+  }
+});
 
 module.exports = router;
