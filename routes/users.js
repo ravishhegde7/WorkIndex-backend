@@ -354,7 +354,7 @@ router.get('/expert/:id', async (req, res) => {
       _id: req.params.id, 
       role: 'expert'
     })
-    .select('name profilePhoto specialization qualifications rating reviewCount bio portfolio location companyName servicesOffered certifications yearsOfExperience createdAt')
+    .select('name profilePhoto specialization qualifications rating reviewCount bio portfolio location companyName servicesOffered certifications yearsOfExperience createdAt profile')
     .lean();
     
     if (!expert) {
