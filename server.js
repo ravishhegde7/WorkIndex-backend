@@ -133,5 +133,5 @@ process.on('unhandledRejection', (err) => {
   // Close server & exit process
   process.exit(1);
 });
-
+app.use('/api/chats', require('./routes/chats'));
 module.exports = app;
