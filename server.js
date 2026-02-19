@@ -75,6 +75,7 @@ app.use('/api/credits', creditRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/access-requests', accessRequestRoutes);
 app.use('/api/ratings', ratingRoutes);
+app.use('/api/chats', require('./routes/chats'));
 
 // ═══════════════════════════════════════════════════════════
 // ERROR HANDLING
@@ -133,5 +134,4 @@ process.on('unhandledRejection', (err) => {
   // Close server & exit process
   process.exit(1);
 });
-app.use('/api/chats', require('./routes/chats'));
 module.exports = app;
