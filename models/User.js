@@ -59,6 +59,7 @@ const userSchema = new mongoose.Schema({
   location: {
     city: String,
     state: String,
+    pincode: String,
     country: { type: String, default: 'India' },
     coordinates: {
       latitude: Number,
