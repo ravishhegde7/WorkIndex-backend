@@ -303,22 +303,43 @@ router.get('/experts', async (req, res) => {
       limit = 20
     } = req.query;
     
-    const query = { role: 'expert', isActive: true };
-    
-    if (service && service !== 'all') {
-      query.servicesOffered = service;
-    }
-    
+    const query = { role: 'expert' };  // ← removed isActive filter
+
+// Service filter
+if (service && service !== 'all') {
+  query.$or = [
+    { servicesOffered: service },
+    { 'profile.servicesOffered': service }
+  ];
+}
+
+// Search by name, city or pincode
 if (location) {
-      query.$or = [
-        { 'location.city': new RegExp(location, 'i') },
-        { 'location.pincode': new RegExp(location, 'i') }
-      ];
-    }
-    
-    if (minRating) {
-      query.rating = { $gte: parseFloat(minRating) };
-    }
+  const searchRegex = new RegExp(location, 'i');
+  const locationConditions = [
+    { name: searchRegex },
+    { 'location.city': searchRegex },
+    { 'location.pincode': searchRegex },
+    { 'profile.city': searchRegex },
+    { 'profile.pincode': searchRegex }
+  ];
+
+  // If service filter also exists, combine with AND logic
+  if (query.$or) {
+    const serviceConditions = query.$or;
+    delete query.$or;
+    query.$and = [
+      { $or: serviceConditions },
+      { $or: locationConditions }
+    ];
+  } else {
+    query.$or = locationConditions;
+  }
+}
+
+if (minRating) {
+  query.rating = { $gte: parseFloat(minRating) };
+}
     
     let sort = '-rating';
     if (sortBy === 'newest') sort = '-createdAt';
