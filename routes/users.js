@@ -309,8 +309,11 @@ router.get('/experts', async (req, res) => {
       query.servicesOffered = service;
     }
     
-    if (location) {
-      query['location.city'] = new RegExp(location, 'i');
+if (location) {
+      query.$or = [
+        { 'location.city': new RegExp(location, 'i') },
+        { 'location.pincode': new RegExp(location, 'i') }
+      ];
     }
     
     if (minRating) {
