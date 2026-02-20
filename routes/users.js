@@ -249,7 +249,7 @@ router.put('/profile', protect, async (req, res) => {
      { 
         profile: profile,
         'location.city': profile.city || '',
-        'location.pincode': profile.pincode || ''
+        'location.pincode': String(profile.pincode || '')  // ✅ force string
       },
       { new: true, runValidators: false }
     ).select('-password');
