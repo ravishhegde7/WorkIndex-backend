@@ -157,6 +157,7 @@ userSchema.index({ email: 1 });
 userSchema.index({ phone: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({ 'location.city': 1, 'location.state': 1 });
+userSchema.index({ 'location.pincode': 1 });  
 userSchema.index({ rating: -1 });
 
 // Pre-save middleware for password hashing
