@@ -349,7 +349,7 @@ if (minRating) {
     const skip = (page - 1) * limit;
     
     const experts = await User.find(query)
-      .select('name profilePhoto specialization bio location rating reviewCount servicesOffered certifications companyName yearsOfExperience createdAt')
+      .select('name profilePhoto specialization bio location rating reviewCount servicesOffered certifications companyName yearsOfExperience createdAt profile')
       .sort(sort)
       .skip(skip)
       .limit(parseInt(limit))
