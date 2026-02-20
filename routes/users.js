@@ -246,7 +246,11 @@ router.put('/profile', protect, async (req, res) => {
 
     const user = await User.findByIdAndUpdate(
       req.user.id,
-      { profile: profile },
+     { 
+        profile: profile,
+        'location.city': profile.city || '',
+        'location.pincode': profile.pincode || ''
+      },
       { new: true, runValidators: false }
     ).select('-password');
 
