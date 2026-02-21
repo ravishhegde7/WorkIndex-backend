@@ -79,10 +79,11 @@ router.post('/evaluate', optionalAuth, async (req, res) => {
     const [recentApproaches, pastComplaints, userRecord] = await Promise.all([
       getRecentApproaches(targetUserId),
       SupportTicket.countDocuments({
-        user: targetUserId,
-        issueType: 'no_response',
-        createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
-      }),
+  user: targetUserId,
+  issueType: 'no_response',
+  status: { $in: ['escalated', 'open'] }, // ✅ Don't count already resolved ones
+  createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+}),
       mongoose.model('User').findById(targetUserId)
         .select('credits createdAt isVerified isFlagged name email')
     ]);
