@@ -84,7 +84,7 @@ router.post('/evaluate', optionalAuth, async (req, res) => {
 
     // ─── EVALUATE INACTIVE CLIENTS ───
     const inactiveApproaches = recentApproaches.filter(approach => {
-      const client = approach.request?.client;
+  const client = approach.client;  // ✅ Direct, not through request
       if (!client) return false;
       const daysSinceLogin = client.lastLogin
         ? (Date.now() - new Date(client.lastLogin)) / (1000 * 60 * 60 * 24)
