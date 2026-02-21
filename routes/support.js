@@ -109,9 +109,7 @@ router.post('/evaluate', optionalAuth, async (req, res) => {
         // Use CreditTransaction data (richer)
         transactionBreakdown = txns.map(tx => {
           const client = tx.relatedClient;
-          const daysSinceLogin = client?.lastLogin
-            ? Math.floor((Date.now() - new Date(client.lastLogin)) / (1000 * 60 * 60 * 24))
-            : 999;
+          
           // ✅ FIXED: Eligibility based on days since APPROACH date, not client login
           const daysSinceApproach = Math.floor(
             (Date.now() - new Date(tx.createdAt)) / (1000 * 60 * 60 * 24)
@@ -140,9 +138,7 @@ router.post('/evaluate', optionalAuth, async (req, res) => {
         // Fall back to Approach model data
         transactionBreakdown = recentApproaches.map(approach => {
           const client = approach.client;
-          const daysSinceLogin = client?.lastLogin
-            ? Math.floor((Date.now() - new Date(client.lastLogin)) / (1000 * 60 * 60 * 24))
-            : 999;
+          
           // ✅ FIXED: Eligibility based on days since APPROACH date, not client login
           const daysSinceApproach = Math.floor(
             (Date.now() - new Date(approach.createdAt)) / (1000 * 60 * 60 * 24)
@@ -168,9 +164,7 @@ router.post('/evaluate', optionalAuth, async (req, res) => {
       console.log('CreditTransaction not available yet, using Approach data');
       transactionBreakdown = recentApproaches.map(approach => {
         const client = approach.client;
-        const daysSinceLogin = client?.lastLogin
-          ? Math.floor((Date.now() - new Date(client.lastLogin)) / (1000 * 60 * 60 * 24))
-          : 999;
+        
         // ✅ FIXED: Eligibility based on days since APPROACH date, not client login
         const daysSinceApproach = Math.floor(
           (Date.now() - new Date(approach.createdAt)) / (1000 * 60 * 60 * 24)
