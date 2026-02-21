@@ -15,7 +15,6 @@ router.post('/', protect, authorize('expert'), async (req, res) => {
     console.log('  Request:', requestId);
     console.log('  Message:', message);
     
-    // Check if request exists
     const request = await Request.findById(requestId);
     
     if (!request) {
@@ -26,7 +25,6 @@ router.post('/', protect, authorize('expert'), async (req, res) => {
       });
     }
     
-    // ✅ NEW: Check if request already has 5 approaches (MAX LIMIT)
     const approachCount = await Approach.countDocuments({ request: requestId });
     
     if (approachCount >= 5) {
@@ -37,44 +35,34 @@ router.post('/', protect, authorize('expert'), async (req, res) => {
       });
     }
     
-    console.log('  Current approach count:', approachCount);
-    
-    // Check if already approached
     const existingApproach = await Approach.findOne({
       request: requestId,
       expert: req.user.id
     });
     
     if (existingApproach) {
-      console.log('❌ Already approached this request');
       return res.status(400).json({ 
         success: false, 
         message: 'You have already approached this request' 
       });
     }
     
-    // Check expert has enough credits
     const expert = await User.findById(req.user.id);
     const creditsRequired = request.credits || 20;
     
-    console.log('  Credits required:', creditsRequired);
-    console.log('  Expert balance:', expert.credits || 0);
-    
     if (!expert.credits || expert.credits < creditsRequired) {
-      console.log('❌ Insufficient credits');
       return res.status(400).json({ 
         success: false, 
         message: 'Insufficient credits. Please purchase credits to approach this request.' 
       });
     }
     
-    // Deduct credits
+    const balanceBefore = expert.credits;
     expert.credits -= creditsRequired;
     await expert.save();
     
     console.log('  💰 Credits deducted. New balance:', expert.credits);
     
-    // Create approach
     const approach = await Approach.create({
       request: requestId,
       expert: req.user.id,
@@ -82,17 +70,44 @@ router.post('/', protect, authorize('expert'), async (req, res) => {
       message: message || 'I am interested in helping with your request.',
       creditsSpent: creditsRequired,
       status: 'pending',
-      contactUnlocked: true  // Credits spent, contact is unlocked
+      contactUnlocked: true
     });
     
-    // Increment approach count on request
+    // ✅ Log credit transaction
+    try {
+      const CreditTransaction = require('../models/CreditTransaction');
+      const clientUser = await User.findById(request.client).select('name location');
+      await CreditTransaction.log({
+        user:          req.user.id,
+        type:          'spent',
+        amount:        -creditsRequired,
+        balanceBefore,
+        balanceAfter:  expert.credits,
+        description:   `Approached: "${request.title}"`,
+        relatedRequest:  request._id,
+        relatedApproach: approach._id,
+        relatedClient:   request.client,
+        initiatedBy:   'user',
+        approachDetails: {
+          requestTitle:       request.title,
+          requestService:     request.service || '',
+          clientName:         clientUser?.name || '',
+          clientCity:         clientUser?.location?.city || '',
+          creditsSpent:       creditsRequired,
+          approachStatus:     'pending',
+          clientHasResponded: false,
+          clientResponseType: null
+        }
+      });
+    } catch (logErr) {
+      console.log('CreditTransaction log skipped:', logErr.message);
+    }
+    
     request.approachCount = (request.approachCount || 0) + 1;
     request.responseCount = (request.responseCount || 0) + 1;
     await request.save();
     
     console.log('✅ Approach created successfully!');
-    console.log('  Approach ID:', approach._id);
-    console.log('  Request approach count:', request.approachCount);
     
     res.status(201).json({ 
       success: true, 
@@ -109,7 +124,7 @@ router.post('/', protect, authorize('expert'), async (req, res) => {
   }
 });
 
-// ─── GET ALL APPROACHES (EXPERT: THEIR OWN, CLIENT: FOR THEIR REQUESTS) ───
+// ─── GET ALL APPROACHES ───
 router.get('/', protect, async (req, res) => {
   try {
     let query = {};
@@ -126,8 +141,6 @@ router.get('/', protect, async (req, res) => {
       .populate('client', 'name email phone')
       .sort('-createdAt')
       .limit(100);
-    
-    console.log(`✅ Found ${approaches.length} approaches for ${req.user.role} ${req.user.id}`);
     
     res.json({ 
       success: true, 
@@ -159,15 +172,12 @@ router.get('/:id', protect, async (req, res) => {
       });
     }
     
-    // Check authorization
     if (approach.expert._id.toString() !== req.user.id && approach.client._id.toString() !== req.user.id) {
       return res.status(403).json({ 
         success: false, 
         message: 'Not authorized' 
       });
     }
-    
-    console.log(`✅ Approach ${req.params.id} retrieved`);
     
     res.json({ success: true, approach });
     
@@ -194,7 +204,6 @@ router.put('/:id/status', protect, authorize('client'), async (req, res) => {
       });
     }
     
-    // Verify ownership
     if (approach.client.toString() !== req.user.id) {
       return res.status(403).json({ 
         success: false, 
@@ -207,12 +216,27 @@ router.put('/:id/status', protect, authorize('client'), async (req, res) => {
     if (status === 'accepted') {
       approach.acceptedAt = new Date();
       
-      // Update request with accepted expert
+      // ✅ Track client response — accepted = client responded
+      if (!approach.clientRespondedAt) {
+        approach.clientRespondedAt  = new Date();
+        approach.clientResponseType = 'contact_viewed';
+      }
+      
       const request = await Request.findById(approach.request);
       if (request) {
         request.acceptedExpert = approach.expert;
         request.status = 'active';
         await request.save();
+      }
+    }
+
+    if (status === 'rejected') {
+      approach.rejectedAt = new Date();
+
+      // ✅ Track client response — rejected = client responded
+      if (!approach.clientRespondedAt) {
+        approach.clientRespondedAt  = new Date();
+        approach.clientResponseType = 'contact_viewed';
       }
     }
     
@@ -231,6 +255,95 @@ router.put('/:id/status', protect, authorize('client'), async (req, res) => {
   }
 });
 
+// ─── MARK VIEW PROFILE (CLIENT CLICKED VIEW PROFILE) ───
+// Called when client clicks "View Profile" on an expert's approach
+router.put('/:id/view-profile', protect, authorize('client'), async (req, res) => {
+  try {
+    const approach = await Approach.findById(req.params.id);
+
+    if (!approach) {
+      return res.status(404).json({ success: false, message: 'Approach not found' });
+    }
+
+    if (approach.client.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    // Only record first response
+    if (!approach.clientRespondedAt) {
+      approach.clientRespondedAt  = new Date();
+      approach.clientResponseType = 'contact_viewed';
+      await approach.save();
+      console.log(`✅ Client viewed profile on approach ${approach._id}`);
+    }
+
+    res.json({ success: true, approach });
+
+  } catch (error) {
+    console.error('❌ View profile track error:', error);
+    res.status(500).json({ success: false, message: 'Error tracking view' });
+  }
+});
+
+// ─── MARK CONTACT SENT (CLIENT CLICKED CONTACT BUTTON) ───
+// Called when client clicks "Contact" button to message expert
+router.put('/:id/contact-sent', protect, authorize('client'), async (req, res) => {
+  try {
+    const approach = await Approach.findById(req.params.id);
+
+    if (!approach) {
+      return res.status(404).json({ success: false, message: 'Approach not found' });
+    }
+
+    if (approach.client.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    // Only record first response
+    if (!approach.clientRespondedAt) {
+      approach.clientRespondedAt  = new Date();
+      approach.clientResponseType = 'contact_sent';
+      await approach.save();
+      console.log(`✅ Client sent contact on approach ${approach._id}`);
+    }
+
+    res.json({ success: true, approach });
+
+  } catch (error) {
+    console.error('❌ Contact sent track error:', error);
+    res.status(500).json({ success: false, message: 'Error tracking contact' });
+  }
+});
+
+// ─── MARK SERVICE RECEIVED (CLIENT CLICKED SERVICE RECEIVED) ───
+router.put('/:id/service-received', protect, authorize('client'), async (req, res) => {
+  try {
+    const approach = await Approach.findById(req.params.id);
+
+    if (!approach) {
+      return res.status(404).json({ success: false, message: 'Approach not found' });
+    }
+
+    if (approach.client.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    approach.isWorkCompleted    = true;
+    approach.workCompletedAt    = new Date();
+    approach.clientRespondedAt  = approach.clientRespondedAt || new Date();
+    approach.clientResponseType = approach.clientResponseType || 'service_marked';
+    await approach.save();
+
+    console.log(`✅ Service marked as received on approach ${approach._id}`);
+
+    res.json({ success: true, approach });
+
+  } catch (error) {
+    console.error('❌ Service received error:', error);
+    res.status(500).json({ success: false, message: 'Error marking service received' });
+  }
+});
+
 // ─── DELETE APPROACH ───
 router.delete('/:id', protect, async (req, res) => {
   try {
@@ -243,7 +356,6 @@ router.delete('/:id', protect, async (req, res) => {
       });
     }
     
-    // Only expert who created it can delete
     if (approach.expert.toString() !== req.user.id) {
       return res.status(403).json({ 
         success: false, 
@@ -252,8 +364,6 @@ router.delete('/:id', protect, async (req, res) => {
     }
     
     await approach.deleteOne();
-    
-    console.log(`✅ Approach ${req.params.id} deleted`);
     
     res.json({ 
       success: true, 
