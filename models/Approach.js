@@ -50,6 +50,22 @@ const approachSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Rating'
   },
+   // ✅ Client Response Tracking
+  clientRespondedAt: {
+    type: Date,
+    default: null
+  },
+  clientResponseType: {
+    type: String,
+    enum: [
+      'contact_viewed',    // Client clicked View Profile
+      'service_marked',    // Client clicked Service Received
+      'access_approved',   // Client approved document access request
+      'access_rejected',   // Client rejected document access request
+      'contact_sent'       // Client clicked Contact button (sent message)
+    ],
+    default: null
+ },
   // ✅ END OF NEW FIELDS
   acceptedAt: Date,
   rejectedAt: Date
