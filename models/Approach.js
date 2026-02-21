@@ -58,11 +58,12 @@ const approachSchema = new mongoose.Schema({
   clientResponseType: {
     type: String,
     enum: [
-      'contact_viewed',    // Client clicked View Profile
-      'service_marked',    // Client clicked Service Received
-      'access_approved',   // Client approved document access request
-      'access_rejected',   // Client rejected document access request
-      'contact_sent'       // Client clicked Contact button (sent message)
+      'contact_viewed',
+      'service_marked',
+      'access_approved',
+      'access_rejected',
+      'contact_sent',
+      null          // ✅ allow null explicitly
     ],
     default: null
  },
