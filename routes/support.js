@@ -112,22 +112,28 @@ router.post('/evaluate', optionalAuth, async (req, res) => {
           const daysSinceLogin = client?.lastLogin
             ? Math.floor((Date.now() - new Date(client.lastLogin)) / (1000 * 60 * 60 * 24))
             : 999;
-          const eligible = daysSinceLogin > 5 && pastComplaints === 0;
+          // ✅ FIXED: Eligibility based on days since APPROACH date, not client login
+          const daysSinceApproach = Math.floor(
+            (Date.now() - new Date(tx.createdAt)) / (1000 * 60 * 60 * 24)
+          );
+          const eligible = daysSinceApproach >= 7 && pastComplaints === 0;
           return {
-            transactionId:   tx._id,
-            requestTitle:    tx.approachDetails?.requestTitle || tx.relatedRequest?.title || 'Unknown',
-            requestService:  tx.approachDetails?.requestService || tx.relatedRequest?.service || '',
-            clientName:      client?.name || tx.approachDetails?.clientName || 'Unknown',
-            clientCity:      client?.location?.city || tx.approachDetails?.clientCity || '',
-            clientLastLogin: client?.lastLogin || null,
+            transactionId:    tx._id,
+            requestTitle:     tx.approachDetails?.requestTitle || tx.relatedRequest?.title || 'Unknown',
+            requestService:   tx.approachDetails?.requestService || tx.relatedRequest?.service || '',
+            clientName:       client?.name || tx.approachDetails?.clientName || 'Unknown',
+            clientCity:       client?.location?.city || tx.approachDetails?.clientCity || '',
+            clientLastLogin:  client?.lastLogin || null,
             daysSinceLogin,
-            creditsSpent:    Math.abs(tx.amount),
-            approachedAt:    tx.createdAt,
+            daysSinceApproach,
+            creditsSpent:     Math.abs(tx.amount),
+            approachedAt:     tx.createdAt,
             eligible,
-            reason: !client ? 'client_not_found'
-              : daysSinceLogin <= 5 ? `client_active_${daysSinceLogin}_days_ago`
-              : pastComplaints > 0  ? 'previous_complaint_exists'
-              : 'client_inactive'
+            reason: daysSinceApproach < 7
+              ? `Only ${daysSinceApproach} day${daysSinceApproach !== 1 ? 's' : ''} since approach — wait until 7 days`
+              : pastComplaints > 0
+                ? 'previous_complaint_exists'
+                : 'client_inactive'
           };
         });
       } else {
@@ -137,17 +143,22 @@ router.post('/evaluate', optionalAuth, async (req, res) => {
           const daysSinceLogin = client?.lastLogin
             ? Math.floor((Date.now() - new Date(client.lastLogin)) / (1000 * 60 * 60 * 24))
             : 999;
-          const eligible = daysSinceLogin > 5 && pastComplaints === 0;
+          // ✅ FIXED: Eligibility based on days since APPROACH date, not client login
+          const daysSinceApproach = Math.floor(
+            (Date.now() - new Date(approach.createdAt)) / (1000 * 60 * 60 * 24)
+          );
+          const eligible = daysSinceApproach >= 7 && pastComplaints === 0;
           return {
-            requestTitle:    approach.request?.title || 'Unknown Request',
-            clientName:      client?.name || 'Unknown Client',
-            clientLastLogin: client?.lastLogin || null,
+            requestTitle:     approach.request?.title || 'Unknown Request',
+            clientName:       client?.name || 'Unknown Client',
+            clientLastLogin:  client?.lastLogin || null,
             daysSinceLogin,
-            creditsSpent:    approach.creditsSpent || 20,
-            approachedAt:    approach.createdAt,
+            daysSinceApproach,
+            creditsSpent:     approach.creditsSpent || 20,
+            approachedAt:     approach.createdAt,
             eligible,
-            reason: daysSinceLogin <= 5
-              ? `client_active_${daysSinceLogin}_days_ago`
+            reason: daysSinceApproach < 7
+              ? `Only ${daysSinceApproach} day${daysSinceApproach !== 1 ? 's' : ''} since approach — wait until 7 days`
               : 'client_inactive'
           };
         });
@@ -160,17 +171,22 @@ router.post('/evaluate', optionalAuth, async (req, res) => {
         const daysSinceLogin = client?.lastLogin
           ? Math.floor((Date.now() - new Date(client.lastLogin)) / (1000 * 60 * 60 * 24))
           : 999;
-        const eligible = daysSinceLogin > 5 && pastComplaints === 0;
+        // ✅ FIXED: Eligibility based on days since APPROACH date, not client login
+        const daysSinceApproach = Math.floor(
+          (Date.now() - new Date(approach.createdAt)) / (1000 * 60 * 60 * 24)
+        );
+        const eligible = daysSinceApproach >= 7 && pastComplaints === 0;
         return {
-          requestTitle:    approach.request?.title || 'Unknown Request',
-          clientName:      client?.name || 'Unknown Client',
-          clientLastLogin: client?.lastLogin || null,
+          requestTitle:     approach.request?.title || 'Unknown Request',
+          clientName:       client?.name || 'Unknown Client',
+          clientLastLogin:  client?.lastLogin || null,
           daysSinceLogin,
-          creditsSpent:    approach.creditsSpent || 20,
-          approachedAt:    approach.createdAt,
+          daysSinceApproach,
+          creditsSpent:     approach.creditsSpent || 20,
+          approachedAt:     approach.createdAt,
           eligible,
-          reason: daysSinceLogin <= 5
-            ? `client_active_${daysSinceLogin}_days_ago`
+          reason: daysSinceApproach < 7
+            ? `Only ${daysSinceApproach} day${daysSinceApproach !== 1 ? 's' : ''} since approach — wait until 7 days`
             : 'client_inactive'
         };
       });
