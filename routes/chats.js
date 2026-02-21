@@ -59,6 +59,18 @@ router.post('/start', protect, async (req, res) => {
       });
     }
 
+    // ✅ Track client response — client started chat (Contact button)
+    // Only record if client is the one initiating (not expert)
+    if (req.user.id === clientId) {
+      await Approach.findOneAndUpdate(
+        { request: requestId, expert: expertId, clientRespondedAt: null },
+        {
+          clientRespondedAt:  new Date(),
+          clientResponseType: 'contact_sent'
+        }
+      );
+    }
+
     await chat.populate('expert', 'name profilePhoto rating');
     await chat.populate('client', 'name profilePhoto');
     await chat.populate('request', 'title service');
@@ -113,6 +125,21 @@ router.post('/:chatId/messages', protect, async (req, res) => {
     chat.lastMessage = text.trim();
     chat.lastMessageAt = new Date();
     await chat.save();
+
+    // ✅ Track client response — if client sends a message, mark as responded
+    if (req.user.id === chat.client.toString()) {
+      await Approach.findOneAndUpdate(
+        { 
+          request: chat.request, 
+          expert: chat.expert,
+          clientRespondedAt: null  // only update if not already tracked
+        },
+        {
+          clientRespondedAt:  new Date(),
+          clientResponseType: 'contact_sent'
+        }
+      );
+    }
 
     res.json({ success: true, message: chat.messages[chat.messages.length - 1] });
   } catch (error) {
