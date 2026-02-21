@@ -132,7 +132,7 @@ router.post('/evaluate', optionalAuth, async (req, res) => {
           const clientResponseType = tx.relatedApproach?.clientResponseType || null;
           const clientRespondedAt  = tx.relatedApproach?.clientRespondedAt  || null;
 
-          const eligible = daysSinceApproach >= 7
+          const eligible = daysSinceApproach >= 0
             && !clientHasResponded
             && pastComplaints === 0;
 
@@ -176,7 +176,7 @@ router.post('/evaluate', optionalAuth, async (req, res) => {
           const clientResponseType = approach.clientResponseType || null;
           const clientRespondedAt  = approach.clientRespondedAt  || null;
 
-          const eligible = daysSinceApproach >= 7
+          const eligible = daysSinceApproach >= 0
             && !clientHasResponded
             && pastComplaints === 0;
 
@@ -211,7 +211,7 @@ router.post('/evaluate', optionalAuth, async (req, res) => {
           (Date.now() - new Date(approach.createdAt)) / (1000 * 60 * 60 * 24)
         );
         const clientHasResponded = !!approach.clientRespondedAt;
-        const eligible = daysSinceApproach >= 7 && !clientHasResponded && pastComplaints === 0;
+        const eligible = daysSinceApproach >= 0 && !clientHasResponded && pastComplaints === 0;
         return {
           requestTitle:       approach.request?.title || 'Unknown Request',
           clientName:         client?.name || 'Unknown Client',
@@ -311,6 +311,7 @@ router.post('/evaluate', optionalAuth, async (req, res) => {
 router.get('/ledger', optionalAuth, async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ success: false, message: 'Login required' });
+    if (!CreditTransaction) return res.status(503).json({ success: false, message: 'Ledger not available yet' });
 
     const { type, startDate, endDate, clientId, limit = 50, skip = 0 } = req.query;
 
@@ -349,6 +350,7 @@ router.get('/ledger', optionalAuth, async (req, res) => {
 router.get('/ledger/client/:clientId', optionalAuth, async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ success: false });
+    if (!CreditTransaction) return res.status(503).json({ success: false, message: 'Ledger not available yet' });
 
     const transactions = await CreditTransaction.find({
       user:          req.user._id,
