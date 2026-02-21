@@ -194,11 +194,21 @@ router.post('/:id/approve', protect, async (req, res) => {
       await document.save();
     }
     
-    // Update approach
-    await Approach.findByIdAndUpdate(accessRequest.approach, {
-      documentAccessGranted: true,
-      documentAccessGrantedAt: Date.now()
-    });
+    // ✅ Track client response — approved document access
+    await Approach.findOneAndUpdate(
+      { _id: accessRequest.approach, clientRespondedAt: null },
+      {
+        documentAccessGranted:   true,
+        documentAccessGrantedAt: Date.now(),
+        clientRespondedAt:       new Date(),
+        clientResponseType:      'access_approved'
+      }
+    );
+    // If already responded before, still mark access granted
+    await Approach.updateOne(
+      { _id: accessRequest.approach, clientRespondedAt: { $ne: null } },
+      { documentAccessGranted: true, documentAccessGrantedAt: Date.now() }
+    );
     
     res.json({
       success: true,
@@ -247,7 +257,16 @@ router.post('/:id/reject', protect, async (req, res) => {
     accessRequest.responseMessage = responseMessage || 'Access denied';
     accessRequest.respondedAt = Date.now();
     await accessRequest.save();
-    
+
+    // ✅ Track client response — rejected document access
+    await Approach.findOneAndUpdate(
+      { _id: accessRequest.approach, clientRespondedAt: null },
+      {
+        clientRespondedAt:  new Date(),
+        clientResponseType: 'access_rejected'
+      }
+    );
+
     res.json({
       success: true,
       message: 'Access request rejected',
@@ -263,15 +282,6 @@ router.post('/:id/reject', protect, async (req, res) => {
   }
 });
 
-await Approach.findOneAndUpdate(
-  { request: requestId, expert: expertId },
-  {
-    $set: {
-      clientRespondedAt:  new Date(),
-      clientResponseType: decision === 'approved' ? 'access_approved' : 'access_rejected'
-    }
-  }
-);
 // ⭐ Get access request details
 router.get('/:id', protect, async (req, res) => {
   try {
