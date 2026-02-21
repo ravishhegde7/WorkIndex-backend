@@ -263,6 +263,15 @@ router.post('/:id/reject', protect, async (req, res) => {
   }
 });
 
+await Approach.findOneAndUpdate(
+  { request: requestId, expert: expertId },
+  {
+    $set: {
+      clientRespondedAt:  new Date(),
+      clientResponseType: decision === 'approved' ? 'access_approved' : 'access_rejected'
+    }
+  }
+);
 // ⭐ Get access request details
 router.get('/:id', protect, async (req, res) => {
   try {
