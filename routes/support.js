@@ -221,18 +221,13 @@ async function getRecentApproaches(userId) {
     const Approach = mongoose.model('Approach');
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    const approaches = await Approach.find({
-      expert: userId,
-      createdAt: { $gte: thirtyDaysAgo }
-    })
-    .populate({
-      path: 'request',
-      populate: {
-        path: 'client',
-        select: 'lastLogin name'
-      }
-    })
-    .limit(20);
+   const approaches = await Approach.find({
+  expert: userId,
+  createdAt: { $gte: thirtyDaysAgo }
+})
+.populate('client', 'lastLogin name')  // ✅ Direct client field
+.populate('request', 'title')
+.limit(20);
 
     return approaches;
   } catch (err) {
