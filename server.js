@@ -76,7 +76,6 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/access-requests', accessRequestRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/chats', require('./routes/chats'));
-app.use('/api/support', require('./routes/support'));
 
 // ═══════════════════════════════════════════════════════════
 // ERROR HANDLING
