@@ -79,16 +79,22 @@ app.use('/api/chats', require('./routes/chats'));
 const adminRoutes = require('./routes/admin');
 app.use('/api/admin', adminRoutes);
 
-app.get('/reset-admin', async (req, res) => {
-  const Admin = require('./models/Admin');
-  const bcrypt = require('bcryptjs');
-  const hashed = await bcrypt.hash('Admin@1234', 12);
-  await Admin.findOneAndUpdate(
-    { adminId: 'admin_workindex' },
-    { password: hashed }
-  );
-  res.json({ message: 'Password reset to Admin@1234 — remove this route now!' });
+app.get('/create-admin', async (req, res) => {
+  try {
+    const Admin = require('./models/Admin');
+    await Admin.deleteMany({}); // clear any broken records
+    await Admin.create({
+      adminId: 'admin_workindex',
+      name: 'WorkIndex Admin',
+      password: 'Admin@1234',
+      role: 'superadmin'
+    });
+    res.json({ message: 'Admin created successfully!' });
+  } catch(e) {
+    res.json({ error: e.message });
+  }
 });
+
 // ═══════════════════════════════════════════════════════════
 // ERROR HANDLING
 // ═══════════════════════════════════════════════════════════
