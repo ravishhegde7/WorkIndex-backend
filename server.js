@@ -76,6 +76,8 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/access-requests', accessRequestRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/chats', require('./routes/chats'));
+const adminRoutes = require('./routes/admin');
+app.use('/api/admin', adminRoutes);
 
 // ═══════════════════════════════════════════════════════════
 // ERROR HANDLING
