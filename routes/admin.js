@@ -167,7 +167,7 @@ var { action, amount, reason, type: reqType } = req.body;
 amount = parseInt(amount);
 if (!amount || amount <= 0) return res.status(400).json({ success: false, message: ‘Invalid amount’ });
 
-```
+
 var user = await User.findById(req.params.id);
 if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
@@ -211,7 +211,7 @@ if (CreditTx) {
 }
 
 res.json({ success: true, message: 'Credits updated', oldBalance, newBalance });
-```
+
 
 } catch (err) { console.error(‘Credit adjust error:’, err); res.status(500).json({ success: false, message: err.message }); }
 });
@@ -225,7 +225,6 @@ var User = mongoose.model(‘User’);
 var { newPassword } = req.body;
 if (!newPassword || newPassword.length < 8) return res.status(400).json({ success: false, message: ‘Password must be at least 8 characters’ });
 
-```
 var user = await User.findById(req.params.id);
 if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
@@ -233,7 +232,7 @@ var hashed = await bcrypt.hash(newPassword, 12);
 await User.findByIdAndUpdate(req.params.id, { password: hashed });
 
 res.json({ success: true, message: 'Password reset successfully' });
-```
+
 
 } catch (err) { console.error(‘Reset PW error:’, err); res.status(500).json({ success: false, message: err.message }); }
 });
@@ -280,7 +279,7 @@ var Message = safeModel(‘Message’);
 var messages = [];
 var chatMeta = null;
 
-```
+
 // Always fetch chat for metadata (expert/client names)
 if (Chat) {
   try {
@@ -345,8 +344,7 @@ var meta = chatMeta ? {
   clientId: chatMeta.client ? String(chatMeta.client._id || chatMeta.client) : null
 } : {};
 
-res.json({ success: true, messages: messages, chat: meta });
-```
+res.json({ success: true, messages: messages, chat: meta })
 
 } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
@@ -558,7 +556,7 @@ if (!Rating) return res.status(404).json({ success: false });
 var rating = await Rating.findById(req.params.id);
 if (!rating) return res.status(404).json({ success: false, message: ‘Review not found’ });
 
-```
+
 // Update expert's rating average
 if (rating.expert) {
   var User = mongoose.model('User');
@@ -573,7 +571,7 @@ if (rating.expert) {
 
 await Rating.findByIdAndDelete(req.params.id);
 res.json({ success: true, message: 'Review deleted' });
-```
+
 
 } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
@@ -686,7 +684,7 @@ var CommLog = safeModel(‘CommunicationLog’);
 var { subject, message, target, emails } = req.body;
 if (!subject || !message) return res.status(400).json({ success: false, message: ‘Subject and message required’ });
 
-```
+
 var recipients = [];
 if (target === 'all') {
   recipients = await User.find({ isActive: true }).select('email name');
@@ -717,7 +715,7 @@ if (CommLog) {
 // for (const r of recipients) { await transporter.sendMail({ to: r.email, subject, html: message }); }
 
 res.json({ success: true, message: 'Communication logged. Connect email provider to send.', recipientCount: recipients.length });
-```
+
 
 } catch (err) { console.error(‘Comm error:’, err); res.status(500).json({ success: false, message: err.message }); }
 });
@@ -742,7 +740,7 @@ var Message = safeModel(‘Message’);
 var { message } = req.body;
 if (!message) return res.status(400).json({ success: false, message: ‘Message required’ });
 
-```
+
 var user = await User.findById(req.params.id);
 if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
@@ -795,7 +793,7 @@ if (CommLog) {
 }
 
 res.json({ success: true, message: 'Message sent to ' + user.name });
-```
+
 
 } catch (err) { console.error(‘DM error:’, err); res.status(500).json({ success: false, message: err.message }); }
 });
@@ -811,7 +809,7 @@ var Notification = safeModel(‘Notification’);
 var { target, title, message } = req.body;
 if (!title || !message) return res.status(400).json({ success: false, message: ‘Title and message required’ });
 
-```
+
 var query = { isActive: true };
 if (target === 'experts') query.role = 'expert';
 else if (target === 'clients') query.role = 'client';
@@ -841,7 +839,6 @@ if (CommLog) {
 }
 
 res.json({ success: true, message: 'Announcement sent', recipientCount: recipients.length });
-```
 
 } catch (err) { console.error(‘Announce error:’, err); res.status(500).json({ success: false, message: err.message }); }
 });
@@ -884,7 +881,6 @@ var Chat = safeModel(‘Chat’);
 var Message = safeModel(‘Message’);
 if (!Chat) return res.json({ success: true, messages: [] });
 
-```
 var chat = await Chat.findById(req.params.id)
   .populate({ path: 'expert', select: 'name profilePhoto role' })
   .populate({ path: 'client', select: 'name profilePhoto role' })
@@ -915,7 +911,6 @@ if (messages.length === 0 && Message) {
 }
 
 res.json({ success: true, messages: messages, chat: chat });
-```
 
 } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
@@ -935,7 +930,6 @@ return res.status(400).json({ success: false, message: ‘userId and subject are
 var user = await User.findById(userId).lean();
 if (!user) return res.status(404).json({ success: false, message: ‘User not found’ });
 
-```
 var ticketData = {
   issueType: subject,
   subject: subject,
@@ -952,7 +946,6 @@ if (user.role === 'expert') ticketData.expert = userId;
 
 var ticket = await Ticket.create(ticketData);
 res.status(201).json({ success: true, message: 'Ticket created', ticket });
-```
 
 } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
@@ -985,7 +978,6 @@ var CommLog = safeModel(‘CommunicationLog’);
 var FailedPayment = safeModel(‘FailedPayment’);
 var deleted = 0;
 
-```
 if (action === 'clearLogs' && CommLog) {
   var cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
   var result = await CommLog.deleteMany({ createdAt: { $lt: cutoff } });
@@ -998,7 +990,6 @@ if (action === 'clearLogs' && CommLog) {
 } else {
   res.status(400).json({ success: false, message: 'Unknown action or model unavailable: ' + action });
 }
-```
 
 } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
