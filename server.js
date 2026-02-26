@@ -65,6 +65,9 @@ const creditRoutes = require('./routes/credits');
 const documentRoutes = require('./routes/documents');
 const accessRequestRoutes = require('./routes/accessRequests');
 const ratingRoutes = require('./routes/ratings');
+require('./models/CommunicationLog');
+require('./models/FailedPayment');
+
 
 // Register routes
 app.use('/api/auth', authRoutes);
