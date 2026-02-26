@@ -67,6 +67,8 @@ const accessRequestRoutes = require('./routes/accessRequests');
 const ratingRoutes = require('./routes/ratings');
 require('./models/CommunicationLog');
 require('./models/FailedPayment');
+require('./models/Notification');
+
 
 
 // Register routes
