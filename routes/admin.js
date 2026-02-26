@@ -35,9 +35,9 @@ function safeReq(path) {
 try { return require(path); } catch(e) { return null; }
 }
 
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 // LOGIN
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 router.post(’/login’, async (req, res) => {
 try {
 var adminId = req.body.adminId, password = req.body.password;
@@ -52,9 +52,9 @@ res.json({ success: true, token: token, admin: { id: admin._id, name: admin.name
 } catch (err) { res.status(500).json({ success: false, message: ‘Login failed’ }); }
 });
 
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 // STATS
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 router.get(’/stats’, protect, async (req, res) => {
 try {
 var from = req.query.from, to = req.query.to;
@@ -93,9 +93,9 @@ res.json({ success: true, stats: { totalClients, totalExperts, totalRequests, to
 } catch (err) { console.error(‘Stats error:’, err); res.status(500).json({ success: false }); }
 });
 
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 // ALL USERS  (search by name/email/phone)
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 router.get(’/users’, protect, async (req, res) => {
 try {
 var User = mongoose.model(‘User’);
@@ -117,9 +117,9 @@ res.json({ success: true, users, total });
 } catch (err) { res.status(500).json({ success: false }); }
 });
 
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 // USER BY ID
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 router.get(’/users/:id’, protect, async (req, res) => {
 try {
 var User = mongoose.model(‘User’);
@@ -156,9 +156,9 @@ res.json({ success: true, user, approaches, requests, transactions, tickets, cre
 } catch (err) { console.error(‘Get user error:’, err); res.status(500).json({ success: false }); }
 });
 
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 // NEW: ADJUST USER CREDITS
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 router.post(’/users/:id/credits’, protect, async (req, res) => {
 try {
 var User = mongoose.model(‘User’);
@@ -216,9 +216,9 @@ res.json({ success: true, message: 'Credits updated', oldBalance, newBalance });
 } catch (err) { console.error(‘Credit adjust error:’, err); res.status(500).json({ success: false, message: err.message }); }
 });
 
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 // NEW: RESET USER PASSWORD
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 router.post(’/users/:id/reset-password’, protect, async (req, res) => {
 try {
 var User = mongoose.model(‘User’);
@@ -238,9 +238,9 @@ res.json({ success: true, message: 'Password reset successfully' });
 } catch (err) { console.error(‘Reset PW error:’, err); res.status(500).json({ success: false, message: err.message }); }
 });
 
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 // APPROACHES
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 router.get(’/approaches’, protect, async (req, res) => {
 try {
 var Approach = safeReq(’../models/Approach’);
@@ -256,9 +256,9 @@ res.json({ success: true, approaches, total });
 } catch (err) { res.status(500).json({ success: false }); }
 });
 
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 // ALL CHATS
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 router.get(’/chats’, protect, async (req, res) => {
 try {
 var Chat = safeModel(‘Chat’);
@@ -366,9 +366,9 @@ res.json({ success: true, chat, messages: chat.messages || [] });
 } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 // CREDIT TRANSACTIONS
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 router.get(’/credits’, protect, async (req, res) => {
 try {
 var CreditTx = safeReq(’../models/CreditTransaction’);
@@ -409,9 +409,9 @@ res.json({ success: true, user, transactions, summary });
 } catch (err) { res.status(500).json({ success: false }); }
 });
 
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 // TICKETS - GET ALL
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 router.get(’/tickets’, protect, async (req, res) => {
 try {
 var Ticket = safeModel(‘SupportTicket’);
@@ -425,9 +425,9 @@ res.json({ success: true, tickets, total: tickets.length });
 } catch (err) { res.status(500).json({ success: false }); }
 });
 
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 // NEW: TICKET BY ID
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 router.get(’/tickets/:id’, protect, async (req, res) => {
 try {
 var Ticket = safeModel(‘SupportTicket’);
@@ -484,9 +484,9 @@ res.json({ success: true, message: ‘Refund rejected’ });
 } catch (err) { res.status(500).json({ success: false }); }
 });
 
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 // NEW: RESOLVE TICKET (non-refund tickets)
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 router.post(’/tickets/:id/resolve’, protect, async (req, res) => {
 try {
 var Ticket = safeModel(‘SupportTicket’);
@@ -502,9 +502,9 @@ res.json({ success: true, message: ‘Ticket resolved’ });
 } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 // USER ACTION (existing + approve/reject for registrations)
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 router.post(’/users/:id/action’, protect, async (req, res) => {
 try {
 var User = mongoose.model(‘User’);
@@ -525,9 +525,9 @@ res.json({ success: true, message: msg, user: { isBanned: user.isBanned, isFlagg
 } catch (err) { res.status(500).json({ success: false }); }
 });
 
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 // NEW: RATINGS / REVIEWS
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 router.get(’/ratings’, protect, async (req, res) => {
 try {
 var Rating = safeModel(‘Rating’);
@@ -578,9 +578,9 @@ res.json({ success: true, message: 'Review deleted' });
 } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 // NEW: POSTS / REQUESTS - EDIT & DELETE
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 router.get(’/requests’, protect, async (req, res) => {
 try {
 var Request = mongoose.model(‘Request’);
@@ -635,7 +635,7 @@ router.put(’/requests/:id’, protect, async (req, res) => {
 try {
 var Request = mongoose.model(‘Request’);
 var { title, description, status, creditsRequired } = req.body;
-// Only update fields that were explicitly sent — prevents accidental status override
+// Only update fields that were explicitly sent ? prevents accidental status override
 var updateFields = {};
 if (title       !== undefined) updateFields.title           = title;
 if (description !== undefined) updateFields.description     = description;
@@ -660,9 +660,9 @@ res.json({ success: true, message: ‘Post deleted’ });
 } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 // NEW: FAILED PAYMENTS
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 router.get(’/payments/failed’, protect, async (req, res) => {
 try {
 var FailedPayment = safeModel(‘FailedPayment’);
@@ -676,9 +676,9 @@ res.json({ success: true, payments, total: payments.length });
 } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 // NEW: COMMUNICATIONS - BULK EMAIL / HISTORY
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 router.post(’/communications/send’, protect, async (req, res) => {
 try {
 var User = mongoose.model(‘User’);
@@ -731,9 +731,9 @@ res.json({ success: true, logs });
 } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-// ═══════════════════════════════════════════════════════════
-// NEW: DIRECT MESSAGE (admin → user inbox)
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
+// NEW: DIRECT MESSAGE (admin ? user inbox)
+// ===========================================================
 router.post(’/users/:id/dm’, protect, async (req, res) => {
 try {
 var User = mongoose.model(‘User’);
@@ -776,7 +776,7 @@ if (Chat && Message) {
     chatCreated = true;
   } catch (chatErr) {
     console.error('Chat/Message create error (non-fatal):', chatErr.message);
-    // Still proceed — DM logged even if chat fails
+    // Still proceed ? DM logged even if chat fails
   }
 }
 
@@ -800,9 +800,9 @@ res.json({ success: true, message: 'Message sent to ' + user.name });
 } catch (err) { console.error(‘DM error:’, err); res.status(500).json({ success: false, message: err.message }); }
 });
 
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 // NEW: ANNOUNCEMENTS (bell notification to users)
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
 router.post(’/communications/announce’, protect, async (req, res) => {
 try {
 var User = mongoose.model(‘User’);
@@ -846,9 +846,9 @@ res.json({ success: true, message: 'Announcement sent', recipientCount: recipien
 } catch (err) { console.error(‘Announce error:’, err); res.status(500).json({ success: false, message: err.message }); }
 });
 
-// ═══════════════════════════════════════════════════════════
-// APPROACHES — UPDATE STATUS & DELETE
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
+// APPROACHES ? UPDATE STATUS & DELETE
+// ===========================================================
 router.put(’/approaches/:id’, protect, async (req, res) => {
 try {
 var Approach = safeModel(‘Approach’);
@@ -920,9 +920,9 @@ res.json({ success: true, messages: messages, chat: chat });
 } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-// ═══════════════════════════════════════════════════════════
-// TICKETS — CREATE ON BEHALF OF USER (admin action)
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
+// TICKETS ? CREATE ON BEHALF OF USER (admin action)
+// ===========================================================
 router.post(’/tickets/create-for-user’, protect, async (req, res) => {
 try {
 var Ticket = safeModel(‘Ticket’);
@@ -957,9 +957,9 @@ res.status(201).json({ success: true, message: 'Ticket created', ticket });
 } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-// ═══════════════════════════════════════════════════════════
-// SETTINGS — Password change + Danger zone + Stats
-// ═══════════════════════════════════════════════════════════
+// ===========================================================
+// SETTINGS ? Password change + Danger zone + Stats
+// ===========================================================
 router.post(’/settings/change-password’, protect, async (req, res) => {
 try {
 var { currentPassword, newPassword } = req.body;
