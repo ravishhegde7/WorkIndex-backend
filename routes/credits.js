@@ -257,7 +257,7 @@ router.post('/add', protect, authorize('expert'), async (req, res) => {
     user.credits += credits;
     await user.save();
     
-    await Transaction.create({
+        await Transaction.create({
       user: req.user.id,
       type: 'credit_purchase',
       amount: 0,
@@ -266,6 +266,25 @@ router.post('/add', protect, authorize('expert'), async (req, res) => {
       paymentMethod: 'manual',
       description: 'Manual credit addition (test/demo)'
     });
+
+    try {
+      const CreditTx = require('../models/CreditTransaction');
+      await CreditTx.create({
+        user: user._id,
+        type: 'purchase',
+        amount: credits,
+        balanceBefore: user.credits - credits,
+        balanceAfter: user.credits,
+        description: 'Manual credit addition: ' + credits + ' credits',
+        purchaseDetails: {
+          packageSize: credits,
+          amountPaid: 0,
+          paymentMethod: 'manual'
+        },
+        initiatedBy: 'user',
+        status: 'completed'
+      });
+    } catch(e) { console.error('CreditTx log failed:', e.message); }
     
     res.json({ 
       success: true, 
