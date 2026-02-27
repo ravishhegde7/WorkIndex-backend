@@ -244,12 +244,33 @@ router.put('/profile', protect, async (req, res) => {
   try {
     const { profile } = req.body;
 
+    // Build location update from all possible sources
+    const locationUpdate = {};
+
+    // Expert: saves city, state, pincode directly in profile
+    if (profile.city)    locationUpdate['location.city']    = profile.city;
+    if (profile.state)   locationUpdate['location.state']   = profile.state;
+    if (profile.pincode) locationUpdate['location.pincode'] = profile.pincode;
+
+    // Client (in-person): saves inside profile.fullAddress
+    if (profile.fullAddress) {
+      if (profile.fullAddress.city)    locationUpdate['location.city']    = profile.fullAddress.city;
+      if (profile.fullAddress.state)   locationUpdate['location.state']   = profile.fullAddress.state;
+      if (profile.fullAddress.pincode) locationUpdate['location.pincode'] = profile.fullAddress.pincode;
+    }
+
+    // Client (online): saves inside profile.clientLocation
+    if (profile.clientLocation) {
+      if (profile.clientLocation.city)    locationUpdate['location.city']    = profile.clientLocation.city;
+      if (profile.clientLocation.state)   locationUpdate['location.state']   = profile.clientLocation.state;
+      if (profile.clientLocation.pincode) locationUpdate['location.pincode'] = profile.clientLocation.pincode;
+    }
+
     const user = await User.findByIdAndUpdate(
       req.user.id,
-     { 
+      { 
         profile: profile,
-        'location.city': profile.city || '',
-        'location.pincode': profile.pincode || ''
+        ...locationUpdate
       },
       { new: true, runValidators: false }
     ).select('-password');
