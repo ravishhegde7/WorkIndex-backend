@@ -722,56 +722,31 @@ router.get('/communications/history', protect, async (req, res) => {
 router.post('/users/:id/dm', protect, async (req, res) => {
   try {
     var User = mongoose.model('User');
-    var Chat = safeModel('Chat');
-    var Message = safeModel('Message');
+    var Notification = safeModel('Notification');
+    var CommLog = safeModel('CommunicationLog');
     var { message } = req.body;
     if (!message) return res.status(400).json({ success: false, message: 'Message required' });
 
     var user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    var chatCreated = false;
-    // Find or create an admin-direct chat thread in the user's inbox
-    if (Chat && Message) {
-      try {
-        // Try both expert/client field patterns
-        var chatQuery = { adminDM: true };
-        if (user.role === 'expert') chatQuery.expert = user._id;
-        else chatQuery.client = user._id;
-        
-        var chat = await Chat.findOne(chatQuery);
-        if (!chat) {
-          var chatData = { adminDM: true, lastMessage: message.substring(0, 100), updatedAt: new Date() };
-          if (user.role === 'expert') chatData.expert = user._id;
-          else chatData.client = user._id;
-          chat = await Chat.create(chatData);
-        }
-        await Message.create({
-          chat: chat._id,
-          sender: null,
-          senderRole: 'admin',
-          text: message,
-          isAdminMessage: true,
-          createdAt: new Date()
-        });
-        chat.lastMessage = message.substring(0, 100);
-        chat.updatedAt = new Date();
-        await chat.save();
-        chatCreated = true;
-      } catch (chatErr) {
-        console.error('Chat/Message create error (non-fatal):', chatErr.message);
-        // Still proceed ? DM logged even if chat fails
-      }
+    if (Notification) {
+      await Notification.create({
+        user: user._id,
+        title: 'Message from WorkIndex Admin',
+        message: message,
+        type: 'admin_dm',
+        isRead: false,
+        sentBy: 'admin'
+      });
     }
 
-    // Log the DM
-    var CommLog = safeModel('CommunicationLog');
     if (CommLog) {
       await CommLog.create({
         type: 'dm',
         subject: 'Direct Message',
         message: message,
-        target: 'custom',  // individual DM
+        target: 'custom',
         recipientCount: 1,
         recipientEmails: [user.email],
         sentBy: req.admin.adminId
@@ -779,8 +754,12 @@ router.post('/users/:id/dm', protect, async (req, res) => {
     }
 
     res.json({ success: true, message: 'Message sent to ' + user.name });
-  } catch (err) { console.error('DM error:', err); res.status(500).json({ success: false, message: err.message }); }
+  } catch (err) {
+    console.error('DM error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
+
 
 // ===========================================================
 // NEW: ANNOUNCEMENTS (bell notification to users)
