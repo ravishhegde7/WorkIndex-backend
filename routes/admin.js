@@ -903,8 +903,8 @@ router.get('/chats/:id/messages', protect, async (req, res) => {
 // ===========================================================
 router.post('/tickets/create-for-user', protect, async (req, res) => {
   try {
-    var Ticket = safeModel('Ticket');
-    if (!Ticket) return res.status(503).json({ success: false, message: 'Ticket model not available' });
+    var Ticket = safeModel('SupportTicket') || safeReq('../models/SupportTicket') || safeReq('../models/Ticket');
+if (!Ticket) return res.status(503).json({ success: false, message: 'Ticket model not found - check model filename' });
     var User = mongoose.model('User');
     var { userId, subject, description, priority, adminNote } = req.body;
     if (!userId || !subject) {
