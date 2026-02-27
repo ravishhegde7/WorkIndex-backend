@@ -194,10 +194,32 @@ router.post('/purchase/verify', protect, authorize('expert'), async (req, res) =
     transaction.paymentVerifiedAt = Date.now();
     await transaction.save();
     
-    // Add credits to user
+       // Add credits to user
     const user = await User.findById(req.user.id);
+    const oldBalance = user.credits;
     user.credits += transaction.credits;
     await user.save();
+
+    // Also log to CreditTransaction so admin panel can see it
+    try {
+      const CreditTx = require('../models/CreditTransaction');
+      await CreditTx.create({
+        user: user._id,
+        type: 'purchase',
+        amount: transaction.credits,
+        balanceBefore: oldBalance,
+        balanceAfter: user.credits,
+        description: 'Credit purchase: ' + transaction.credits + ' credits for Rs.' + transaction.amount,
+        purchaseDetails: {
+          packageSize: transaction.credits,
+          amountPaid: transaction.amount,
+          paymentMethod: 'upi',
+          transactionId: String(transaction._id)
+        },
+        initiatedBy: 'user',
+        status: 'completed'
+      });
+    } catch(e) { console.error('CreditTx log failed:', e.message); }
     
     res.json({
       success: true,
