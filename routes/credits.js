@@ -302,9 +302,26 @@ router.post('/deduct', protect, authorize('expert'), async (req, res) => {
       });
     }
     
+        const oldBal = user.credits;
     user.credits -= credits;
     await user.save();
-    
+
+    // Log to CreditTransaction for admin panel
+    try {
+      const CreditTx = require('../models/CreditTransaction');
+      await CreditTx.create({
+        user: user._id,
+        type: 'spent',
+        amount: -credits,
+        balanceBefore: oldBal,
+        balanceAfter: user.credits,
+        description: description || 'Credits spent on approach',
+        relatedApproach: approachId || null,
+        initiatedBy: 'user',
+        status: 'completed'
+      });
+    } catch(e) { console.error('CreditTx log failed:', e.message); }
+
     await Transaction.create({
       user: req.user.id,
       type: 'approach_sent',
