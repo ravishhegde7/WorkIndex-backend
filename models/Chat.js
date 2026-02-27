@@ -7,7 +7,7 @@ const messageSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const chatSchema = new mongoose.Schema({
-  request: { type: mongoose.Schema.Types.ObjectId, ref: 'Request', required: true },
+    request: { type: mongoose.Schema.Types.ObjectId, ref: 'Request', default: null },
   expert: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   client: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   messages: [messageSchema],
