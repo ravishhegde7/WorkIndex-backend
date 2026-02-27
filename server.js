@@ -68,6 +68,8 @@ const ratingRoutes = require('./routes/ratings');
 require('./models/CommunicationLog');
 require('./models/FailedPayment');
 require('./models/Notification');
+require('./models/SupportTicket');
+
 
 
 
