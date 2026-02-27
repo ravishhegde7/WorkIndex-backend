@@ -628,7 +628,7 @@ router.put('/requests/:id', protect, async (req, res) => {
     if (title       !== undefined) updateFields.title           = title;
     if (description !== undefined) updateFields.description     = description;
     if (status      !== undefined && status !== '') updateFields.status = status;
-    if (creditsRequired !== undefined && creditsRequired !== null) updateFields.creditsRequired = parseInt(creditsRequired) || 0;
+        if (creditsRequired !== undefined && creditsRequired !== null) updateFields.credits = parseInt(creditsRequired) || 0;
     var request = await Request.findByIdAndUpdate(
       req.params.id,
       { $set: updateFields },
