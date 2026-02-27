@@ -722,7 +722,7 @@ router.get('/communications/history', protect, async (req, res) => {
 router.post('/users/:id/dm', protect, async (req, res) => {
   try {
     var User = mongoose.model('User');
-    var Notification = safeModel('Notification');
+    var Chat = safeModel('Chat');
     var CommLog = safeModel('CommunicationLog');
     var { message } = req.body;
     if (!message) return res.status(400).json({ success: false, message: 'Message required' });
@@ -730,15 +730,40 @@ router.post('/users/:id/dm', protect, async (req, res) => {
     var user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    if (Notification) {
-      await Notification.create({
-        user: user._id,
-        title: 'Message from WorkIndex Admin',
-        message: message,
-        type: 'admin_dm',
-        isRead: false,
-        sentBy: 'admin'
+    if (Chat) {
+      // Find existing admin DM chat or create new one
+      var chatQuery = { request: null, adminDM: true };
+      if (user.role === 'expert') chatQuery.expert = user._id;
+      else chatQuery.client = user._id;
+
+      var chat = await Chat.findOne(chatQuery);
+      if (!chat) {
+        var chatData = {
+          request: null,
+          adminDM: true,
+          lastMessage: message.substring(0, 100),
+          lastMessageAt: new Date(),
+          messages: []
+        };
+        if (user.role === 'expert') {
+          chatData.expert = user._id;
+          chatData.client = user._id; // dummy - same user
+        } else {
+          chatData.client = user._id;
+          chatData.expert = user._id; // dummy - same user
+        }
+        chat = await Chat.create(chatData);
+      }
+
+      // Push message into embedded messages array
+      chat.messages.push({
+        sender: user._id, // use user as sender placeholder
+        text: '[Admin]: ' + message,
+        readAt: null
       });
+      chat.lastMessage = '[Admin]: ' + message.substring(0, 80);
+      chat.lastMessageAt = new Date();
+      await chat.save();
     }
 
     if (CommLog) {
@@ -759,6 +784,7 @@ router.post('/users/:id/dm', protect, async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+
 
 
 // ===========================================================
