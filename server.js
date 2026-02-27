@@ -85,6 +85,7 @@ app.use('/api/ratings', ratingRoutes);
 app.use('/api/chats', require('./routes/chats'));
 const adminRoutes = require('./routes/admin');
 app.use('/api/admin', adminRoutes);
+app.use('/api/notifications', require('./routes/notifications'));
 
 app.get('/create-admin', async (req, res) => {
   try {
