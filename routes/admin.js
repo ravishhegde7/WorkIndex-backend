@@ -599,9 +599,9 @@ router.get('/requests', protect, async (req, res) => {
             approachMap[rid] = a.creditsSpent;
           }
         });
-        requests = requests.map(function(r) {
+                requests = requests.map(function(r) {
           var ro = r.toObject ? r.toObject() : Object.assign({}, r);
-          if (approachMap[String(ro._id)]) ro.creditsRequired = approachMap[String(ro._id)];
+          if (!ro.credits && approachMap[String(ro._id)]) ro.credits = approachMap[String(ro._id)];
           return ro;
         });
       }
