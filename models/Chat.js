@@ -11,8 +11,9 @@ const chatSchema = new mongoose.Schema({
   expert: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   client: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   messages: [messageSchema],
-  lastMessage: { type: String, default: '' },
-  lastMessageAt: { type: Date, default: Date.now }
+    lastMessage: { type: String, default: '' },
+  lastMessageAt: { type: Date, default: Date.now },
+  adminDM: { type: Boolean, default: false }
 }, { timestamps: true });
 
 // One chat per expert-client-request combination
