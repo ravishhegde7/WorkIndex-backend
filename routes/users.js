@@ -58,7 +58,14 @@ router.get('/me', protect, async (req, res) => {
         emailVerified: user.emailVerified,
         phoneVerified: user.phoneVerified,
         preferences: user.preferences,
-        createdAt: user.createdAt
+        createdAt: user.createdAt,
+        kyc: user.kyc ? {
+          status: user.kyc.status,
+          docType: user.kyc.docType,
+          rejectionReason: user.kyc.rejectionReason
+        } : { status: 'not_submitted' },
+        totalApproaches: user.totalApproaches || 0,
+        responseRate: user.responseRate || 0
       }
     });
   } catch (error) {
