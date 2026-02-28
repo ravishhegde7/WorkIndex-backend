@@ -89,6 +89,8 @@ router.post('/', protect, authorize('expert'), async (req, res) => {
     request.approachCount = (request.approachCount || 0) + 1;
     request.responseCount = (request.responseCount || 0) + 1;
     await request.save();
+  // ─── INCREMENT EXPERT'S TOTAL APPROACHES ───
+    await User.findByIdAndUpdate(req.user.id, { $inc: { totalApproaches: 1 } });  
     
     console.log('✅ Approach created successfully!');
     console.log('  Approach ID:', approach._id);
