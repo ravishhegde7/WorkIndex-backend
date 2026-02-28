@@ -203,6 +203,56 @@ router.put('/preferences', protect, async (req, res) => {
     });
   }
 });
+// POST /api/users/tickets - Create support ticket
+router.post('/tickets', protect, async (req, res) => {
+  try {
+    var SupportTicket = mongoose.models['SupportTicket'];
+    if (!SupportTicket) {
+      try { SupportTicket = require('../models/SupportTicket'); } catch(e) {}
+    }
+    if (!SupportTicket) {
+      return res.status(503).json({ success: false, message: 'Ticket system not available' });
+    }
+
+    var { subject, description, priority, issueType } = req.body;
+    if (!subject) return res.status(400).json({ success: false, message: 'Subject required' });
+
+    var ticketData = {
+      user: req.user._id,
+      issueType: issueType || subject,
+      subject: subject,
+      description: description || subject,
+      priority: priority || 'medium',
+      status: 'open'
+    };
+
+    if (req.user.role === 'expert') ticketData.expert = req.user._id;
+
+    var ticket = await SupportTicket.create(ticketData);
+    res.status(201).json({ success: true, message: 'Ticket created', ticket });
+  } catch (err) {
+    console.error('Create ticket error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/users/tickets - Get user's own tickets
+router.get('/tickets', protect, async (req, res) => {
+  try {
+    var SupportTicket = mongoose.models['SupportTicket'];
+    if (!SupportTicket) {
+      try { SupportTicket = require('../models/SupportTicket'); } catch(e) {}
+    }
+    if (!SupportTicket) return res.json({ success: true, tickets: [] });
+
+    var tickets = await SupportTicket.find({ user: req.user._id })
+      .sort({ createdAt: -1 })
+      .limit(20);
+    res.json({ success: true, tickets });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 // Add to portfolio (for experts)
 router.post('/portfolio', protect, authorize('expert'), upload.single('image'), async (req, res) => {
