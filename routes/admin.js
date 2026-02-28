@@ -936,6 +936,45 @@ if (!Ticket) return res.status(503).json({ success: false, message: 'Ticket mode
     res.status(201).json({ success: true, message: 'Ticket created', ticket });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
+// ===========================================================
+// KYC REVIEW
+// ===========================================================
+router.get('/kyc-requests', protect, async (req, res) => {
+  try {
+    var User = mongoose.model('User');
+    var status = req.query.status || 'pending';
+    var users = await User.find(
+      { 'kyc.status': status },
+      'name email phone kyc createdAt'
+    ).sort({ 'kyc.submittedAt': -1 });
+    res.json({ success: true, users });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+router.post('/kyc/:userId/approve', protect, async (req, res) => {
+  try {
+    var User = mongoose.model('User');
+    await User.findByIdAndUpdate(req.params.userId, {
+      'kyc.status':          'approved',
+      'kyc.reviewedAt':      new Date(),
+      'kyc.rejectionReason': null
+    });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+router.post('/kyc/:userId/reject', protect, async (req, res) => {
+  try {
+    var User = mongoose.model('User');
+    var reason = req.body.reason || 'Document unclear or invalid';
+    await User.findByIdAndUpdate(req.params.userId, {
+      'kyc.status':          'rejected',
+      'kyc.reviewedAt':      new Date(),
+      'kyc.rejectionReason': reason
+    });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
 
 // ===========================================================
 // SETTINGS ? Password change + Danger zone + Stats
