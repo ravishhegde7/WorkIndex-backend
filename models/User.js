@@ -133,6 +133,21 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  // KYC Verification
+  kyc: {
+    status:          { type: String, enum: ['not_submitted','pending','approved','rejected'], default: 'not_submitted' },
+    docType:         { type: String },
+    docBase64:       { type: String },
+    fileName:        { type: String },
+    mimeType:        { type: String },
+    submittedAt:     { type: Date },
+    reviewedAt:      { type: Date },
+    rejectionReason: { type: String }
+  },
+
+  // Profile strength tracking
+  totalApproaches: { type: Number, default: 0 },
+  responseRate:    { type: Number, default: 0 },
 
   // ─── NEW ADMIN FIELDS ───────────────────────────────────
   // Expert registration approval
