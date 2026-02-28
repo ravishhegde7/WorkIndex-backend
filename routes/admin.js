@@ -135,7 +135,7 @@ router.get('/users/:id', protect, async (req, res) => {
       if (to)   dateQ.createdAt.$lte = new Date(new Date(to).setHours(23,59,59,999));
     }
     var uid = req.params.id;
-    var user = await User.findById(uid).select('-password');
+        var user = await User.findById(uid).select('-password -kyc.docBase64');
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
     var approaches = Approach ? await Approach.find(Object.assign({ expert: uid }, dateQ)).populate('request', 'title service status').populate('client', 'name email').sort({ createdAt: -1 }).limit(50) : [];
     var requests   = await Request.find(Object.assign({ client: uid }, dateQ)).sort({ createdAt: -1 }).limit(30);
