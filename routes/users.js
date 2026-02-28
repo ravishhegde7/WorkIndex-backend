@@ -261,6 +261,37 @@ router.get('/tickets', protect, async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+// POST /api/users/kyc - Submit KYC document
+router.post('/kyc', protect, async (req, res) => {
+  try {
+    const { docType, docBase64, fileName, mimeType } = req.body;
+
+    if (!docType || !docBase64) {
+      return res.json({ success: false, message: 'Document type and file required' });
+    }
+
+    const base64Data = docBase64.split(',')[1] || docBase64;
+    if (base64Data.length > 7 * 1024 * 1024) {
+      return res.json({ success: false, message: 'File too large. Max 5MB.' });
+    }
+
+    await User.findByIdAndUpdate(req.user.id, {
+      'kyc.status':          'pending',
+      'kyc.docType':         docType,
+      'kyc.docBase64':       docBase64,
+      'kyc.fileName':        fileName,
+      'kyc.mimeType':        mimeType,
+      'kyc.submittedAt':     new Date(),
+      'kyc.rejectionReason': null,
+      'kyc.reviewedAt':      null
+    });
+
+    res.json({ success: true, message: 'KYC submitted successfully' });
+  } catch (err) {
+    console.error('KYC submit error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
 
 // Add to portfolio (for experts)
 router.post('/portfolio', protect, authorize('expert'), upload.single('image'), async (req, res) => {
