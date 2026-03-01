@@ -446,6 +446,30 @@ router.post('/:id/complete', protect, authorize('client'), async (req, res) => {
     });
   }
 });
+// ─── TRACK EXPERT VIEW ON REQUEST ───
+router.post('/:id/view', protect, authorize('expert'), async (req, res) => {
+  try {
+    const request = await Request.findById(req.params.id);
+    if (!request) return res.status(404).json({ success: false });
+
+    const alreadyViewed = (request.viewedBy || []).some(
+      id => id.toString() === req.user._id.toString()
+    );
+
+    if (!alreadyViewed) {
+      await Request.findByIdAndUpdate(req.params.id, {
+        $inc: { viewCount: 1 },
+        $addToSet: { viewedBy: req.user._id }
+      });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('View track error:', err);
+    res.status(500).json({ success: false });
+  }
+});
+
 router.get('/test-approach-update', protect, async (req, res) => {
   res.json({ 
     message: 'Approach update code is deployed',
