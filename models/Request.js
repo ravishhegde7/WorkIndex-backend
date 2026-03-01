@@ -80,9 +80,20 @@ const requestSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  viewCount: {
+    viewCount: {
     type: Number,
     default: 0
+  },
+
+  viewedBy: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+
+  completedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   }
 }, {
   timestamps: true  // Adds createdAt and updatedAt
