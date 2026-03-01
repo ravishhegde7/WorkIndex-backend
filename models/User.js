@@ -183,6 +183,28 @@ const userSchema = new mongoose.Schema({
     by: String  // admin ID who issued it
   },
   // ────────────────────────────────────────────────────────
+  // Client: blocked and shortlisted experts
+  blockedExperts: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+
+  shortlistedExperts: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+
+  // Expert: report tracking
+  reportCount: {
+    type: Number,
+    default: 0
+  },
+
+  reports: [{
+    reportedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    reason: String,
+    date: Date
+  }],
 
   // User Preferences
   preferences: {
