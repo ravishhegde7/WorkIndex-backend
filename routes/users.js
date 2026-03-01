@@ -525,4 +525,224 @@ router.get('/expert/:id', async (req, res) => {
     });
   }
 });
+// ─── BLOCK EXPERT (client blocks/reports an expert) ───
+router.post('/:id/block', protect, authorize('client'), async (req, res) => {
+  try {
+    const { report, reason } = req.body;
+    const expertId = req.params.id;
+
+    // Add to client's blocked list
+    await User.findByIdAndUpdate(req.user._id, {
+      $addToSet: { blockedExperts: expertId }
+    });
+
+    // If also reporting, log on expert's record
+    if (report) {
+      await User.findByIdAndUpdate(expertId, {
+        $inc: { reportCount: 1 },
+        $push: {
+          reports: {
+            reportedBy: req.user._id,
+            reason: reason || 'Reported by client',
+            date: new Date()
+          }
+        }
+      });
+    }
+
+    console.log(`✅ User ${req.user._id} blocked expert ${expertId}. Report: ${report}`);
+    res.json({
+      success: true,
+      message: report ? 'Expert blocked and reported' : 'Expert blocked'
+    });
+  } catch (err) {
+    console.error('Block expert error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ─── SHORTLIST OR HIRE EXPERT (client action) ───
+router.post('/:id/interest', protect, authorize('client'), async (req, res) => {
+  try {
+    const { type } = req.body; // 'shortlist' or 'hire'
+    const expertId = req.params.id;
+    const clientId = req.user._id;
+
+    const expert = await User.findById(expertId);
+    if (!expert || expert.role !== 'expert') {
+      return res.status(404).json({ success: false, message: 'Expert not found' });
+    }
+
+    // ── SHORTLIST ──
+    if (type === 'shortlist') {
+      const client = await User.findById(clientId);
+      const alreadyShortlisted = (client.shortlistedExperts || [])
+        .some(id => id.toString() === expertId.toString());
+
+      if (alreadyShortlisted) {
+        // Toggle off — remove from shortlist
+        await User.findByIdAndUpdate(clientId, {
+          $pull: { shortlistedExperts: expertId }
+        });
+        return res.json({ success: true, message: 'Removed from shortlist', shortlisted: false });
+      } else {
+        await User.findByIdAndUpdate(clientId, {
+          $addToSet: { shortlistedExperts: expertId }
+        });
+        return res.json({ success: true, message: 'Expert shortlisted', shortlisted: true });
+      }
+    }
+
+    // ── HIRE ──
+    if (type === 'hire') {
+      const phone = req.user.phone || '';
+      const email = req.user.email || '';
+
+      // Build masked versions
+      const maskedPhone = phone.length >= 4
+        ? phone.slice(0, 2) + 'XXXXXX' + phone.slice(-2)
+        : 'XXXXXXXXXX';
+      const emailParts = email.split('@');
+      const maskedEmail = emailParts[0]
+        ? emailParts[0][0] + '****@' + (emailParts[1] || '')
+        : '****@****.com';
+
+      // Send notification to expert
+      const Notification = mongoose.models['Notification'];
+      if (Notification) {
+        await Notification.create({
+          user: expertId,
+          type: 'customer_interest',
+          title: '🎯 A client wants to hire you!',
+          message: `New hire interest: ${maskedPhone} · ${maskedEmail}. Spend credits to unlock full details.`,
+          data: {
+            clientId: clientId.toString(),
+            maskedPhone,
+            maskedEmail,
+            fullPhone: phone,
+            fullEmail: email,
+            clientName: req.user.name,
+            unlocked: false
+          },
+          isRead: false
+        });
+        console.log(`✅ Hire notification created for expert ${expertId}`);
+      } else {
+        console.log('⚠️  Notification model not found — notification skipped');
+      }
+
+      return res.json({ success: true, message: 'Expert notified of your interest' });
+    }
+
+    res.status(400).json({ success: false, message: 'Invalid type. Use shortlist or hire.' });
+  } catch (err) {
+    console.error('Interest error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ─── GET CLIENT'S SHORTLISTED EXPERTS ───
+router.get('/shortlisted', protect, authorize('client'), async (req, res) => {
+  try {
+    const client = await User.findById(req.user._id)
+      .populate(
+        'shortlistedExperts',
+        'name profilePhoto specialization rating reviewCount profile location bio'
+      )
+      .lean();
+
+    res.json({
+      success: true,
+      experts: client.shortlistedExperts || []
+    });
+  } catch (err) {
+    console.error('Get shortlisted error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ─── EXPERT UNLOCKS CUSTOMER INTEREST NOTIFICATION ───
+router.post('/unlock-interest/:notifId', protect, authorize('expert'), async (req, res) => {
+  try {
+    const Notification = mongoose.models['Notification'];
+    const CreditTransaction = require('../models/CreditTransaction');
+    const UNLOCK_COST = 5;
+
+    if (!Notification) {
+      return res.status(503).json({ success: false, message: 'Notification system unavailable' });
+    }
+
+    const notif = await Notification.findById(req.params.notifId);
+    if (!notif || notif.user.toString() !== req.user._id.toString()) {
+      return res.status(404).json({ success: false, message: 'Notification not found' });
+    }
+
+    // Already unlocked — just return details
+    if (notif.data && notif.data.unlocked) {
+      return res.json({
+        success: true,
+        alreadyUnlocked: true,
+        client: {
+          name: notif.data.clientName,
+          phone: notif.data.fullPhone,
+          email: notif.data.fullEmail
+        }
+      });
+    }
+
+    // Check credits
+    const expert = await User.findById(req.user._id);
+    if ((expert.credits || 0) < UNLOCK_COST) {
+      return res.status(400).json({
+        success: false,
+        message: `Need ${UNLOCK_COST} credits to unlock. You have ${expert.credits || 0}.`,
+        needCredits: true
+      });
+    }
+
+    // Deduct credits
+    const balanceBefore = expert.credits;
+    expert.credits -= UNLOCK_COST;
+    await expert.save();
+
+    // Log credit transaction
+    try {
+      await CreditTransaction.create({
+        user: expert._id,
+        type: 'spent',
+        amount: -UNLOCK_COST,
+        balanceBefore,
+        balanceAfter: expert.credits,
+        description: 'Unlocked customer hire interest'
+      });
+    } catch (txErr) {
+      console.log('CreditTransaction log failed (non-fatal):', txErr.message);
+    }
+
+    // Mark notification as unlocked
+    notif.data = {
+      ...notif.data.toObject ? notif.data.toObject() : notif.data,
+      unlocked: true
+    };
+    notif.markModified('data');
+    notif.isRead = true;
+    await notif.save();
+
+    console.log(`✅ Expert ${expert._id} unlocked interest. Credits: ${balanceBefore} → ${expert.credits}`);
+
+    res.json({
+      success: true,
+      creditsSpent: UNLOCK_COST,
+      newBalance: expert.credits,
+      client: {
+        name: notif.data.clientName,
+        phone: notif.data.fullPhone,
+        email: notif.data.fullEmail
+      }
+    });
+  } catch (err) {
+    console.error('Unlock interest error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 module.exports = router;
