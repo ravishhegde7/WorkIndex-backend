@@ -17,7 +17,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['announcement', 'system', 'refund', 'approach', 'chat', 'admin_dm'],
+    enum: ['announcement', 'system', 'refund', 'approach', 'chat', 'admin_dm','customer_interest'],
     default: 'system'
   },
   isRead: {
