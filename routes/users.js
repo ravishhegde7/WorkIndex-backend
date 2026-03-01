@@ -666,7 +666,7 @@ router.post('/unlock-interest/:notifId', protect, authorize('expert'), async (re
   try {
     const Notification = mongoose.models['Notification'];
     const CreditTransaction = require('../models/CreditTransaction');
-    const UNLOCK_COST = 5;
+    const UNLOCK_COST = 15;
 
     if (!Notification) {
       return res.status(503).json({ success: false, message: 'Notification system unavailable' });
@@ -720,10 +720,9 @@ router.post('/unlock-interest/:notifId', protect, authorize('expert'), async (re
     }
 
     // Mark notification as unlocked
-    notif.data = {
-      ...notif.data.toObject ? notif.data.toObject() : notif.data,
-      unlocked: true
-    };
+        // Mark notification as unlocked
+    const existingData = notif.data ? (typeof notif.data === 'object' ? { ...notif.data } : {}) : {};
+    notif.data = { ...existingData, unlocked: true };
     notif.markModified('data');
     notif.isRead = true;
     await notif.save();
