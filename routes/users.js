@@ -614,7 +614,7 @@ router.post('/:id/interest', protect, authorize('client'), async (req, res) => {
           user: expertId,
           type: 'customer_interest',
           title: '🎯 A client wants to hire you!',
-          message: `New hire interest: ${maskedPhone} · ${maskedEmail}. Spend credits to unlock full details.`,
+          message: `A client wants to hire you for their project. Spend 5 credits to unlock their full contact details (phone + email) and reach out directly.`,
           data: {
             clientId: clientId.toString(),
             maskedPhone,
