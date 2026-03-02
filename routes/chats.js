@@ -24,13 +24,65 @@ router.get('/', protect, async (req, res) => {
   }
 });
 
+// Direct chat between expert and client (no request needed - for customer interest unlocks)
+router.post('/direct', protect, async (req, res) => {
+  try {
+    const { expertId, clientId } = req.body;
+    if (!expertId || !clientId) {
+      return res.status(400).json({ success: false, message: 'expertId and clientId required' });
+    }
+
+    // Find ANY existing chat between these two users
+    let chat = await Chat.findOne({ expert: expertId, client: clientId });
+
+    if (!chat) {
+      // Use a dummy unique requestId to avoid null unique index conflict
+      chat = await Chat.create({
+        expert: expertId,
+        client: clientId,
+        request: null,
+        lastMessage: ''
+      });
+    }
+
+    await chat.populate('expert', 'name profilePhoto rating');
+    await chat.populate('client', 'name profilePhoto');
+
+    res.json({ success: true, chat });
+  } catch (err) {
+    // If duplicate key error on null, find and return existing
+    if (err.code === 11000) {
+      try {
+        const chat = await Chat.findOne({ expert: expertId, client: clientId });
+        if (chat) return res.json({ success: true, chat });
+      } catch (e) {}
+    }
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // Get or create chat (called when Contact button clicked or expert approaches)
 router.post('/start', protect, async (req, res) => {
   try {
     const { requestId, expertId, clientId } = req.body;
 
+    // If no requestId, treat as direct chat
+    if (!requestId || requestId === 'null') {
+      let chat = await Chat.findOne({ expert: expertId, client: clientId });
+      if (!chat) {
+        chat = await Chat.create({
+          expert: expertId,
+          client: clientId,
+          request: null,
+          lastMessage: ''
+        });
+      }
+      await chat.populate('expert', 'name profilePhoto rating');
+      await chat.populate('client', 'name profilePhoto');
+      return res.json({ success: true, chat });
+    }
+
     // Verify an approach exists (expert paid credits)
-    // Adjust model name to match yours
     const approach = await Approach.findOne({
       request: requestId,
       expert: expertId
@@ -119,32 +171,5 @@ router.post('/:chatId/messages', protect, async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-// Direct chat between expert and client (no request needed)
-router.post('/direct', protect, async (req, res) => {
-  try {
-    const { expertId, clientId } = req.body;
-    if (!expertId || !clientId) {
-      return res.status(400).json({ success: false, message: 'expertId and clientId required' });
-    }
 
-    // Check if chat already exists between these two users (any request)
-    let chat = await Chat.findOne({
-      expert: expertId,
-      client: clientId
-    });
-
-    if (!chat) {
-      chat = await Chat.create({
-        expert: expertId,
-        client: clientId,
-        request: null,  // no request
-        lastMessage: ''
-      });
-    }
-
-    res.json({ success: true, chat });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
 module.exports = router;
