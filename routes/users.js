@@ -720,12 +720,16 @@ router.post('/unlock-interest/:notifId', protect, authorize('expert'), async (re
     }
 
     // Mark notification as unlocked
-        // Mark notification as unlocked
-    const existingData = notif.data ? (typeof notif.data === 'object' ? { ...notif.data } : {}) : {};
-    notif.data = { ...existingData, unlocked: true };
-    notif.markModified('data');
-    notif.isRead = true;
-    await notif.save();
+        // Mark notification as unlocked — atomic update to force MongoDB save
+    await Notification.findByIdAndUpdate(notif._id, {
+      $set: {
+        'data.unlocked': true,
+        isRead: true
+      }
+    });
+
+    // Re-fetch to get the saved data for response
+    const updatedNotif = await Notification.findById(notif._id);
 
     console.log(`✅ Expert ${expert._id} unlocked interest. Credits: ${balanceBefore} → ${expert.credits}`);
 
@@ -734,9 +738,9 @@ router.post('/unlock-interest/:notifId', protect, authorize('expert'), async (re
       creditsSpent: UNLOCK_COST,
       newBalance: expert.credits,
       client: {
-        name: notif.data.clientName,
-        phone: notif.data.fullPhone,
-        email: notif.data.fullEmail
+        name: updatedNotif.data.clientName,
+        phone: updatedNotif.data.fullPhone,
+        email: updatedNotif.data.fullEmail
       }
     });
   } catch (err) {
