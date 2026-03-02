@@ -17,6 +17,6 @@ const chatSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // One chat per expert-client-request combination
-chatSchema.index({ request: 1, expert: 1, client: 1 }, { unique: true });
+chatSchema.index({ request: 1, expert: 1, client: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Chat', chatSchema);
