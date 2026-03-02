@@ -701,6 +701,7 @@ router.post('/unlock-interest/:notifId', protect, authorize('expert'), async (re
     }
 
     // Deduct credits
+        // Deduct credits
     const balanceBefore = expert.credits;
     expert.credits -= UNLOCK_COST;
     await expert.save();
@@ -719,31 +720,43 @@ router.post('/unlock-interest/:notifId', protect, authorize('expert'), async (re
       console.log('CreditTransaction log failed (non-fatal):', txErr.message);
     }
 
-    // Mark notification as unlocked
-        // Mark notification as unlocked — atomic update to force MongoDB save
-        // Mark notification as unlocked — atomic update to force MongoDB save
-    await Notification.findByIdAndUpdate(notif._id, {
-      $set: {
-        'data.unlocked': true,
-        isRead: true
-      }
-    });
+    // Save client data BEFORE modifying notif.data
+    const clientName = notif.data ? notif.data.clientName : '';
+    const fullPhone  = notif.data ? notif.data.fullPhone  : '';
+    const fullEmail  = notif.data ? notif.data.fullEmail  : '';
+    const maskedPhone = notif.data ? notif.data.maskedPhone : '';
+    const maskedEmail = notif.data ? notif.data.maskedEmail : '';
+    const clientId   = notif.data ? notif.data.clientId   : '';
 
-    // Use the original notif.data for the response (we already have it in memory)
-    // notif.data has clientName, fullPhone, fullEmail from when we fetched it above
-    const clientData = notif.data || {};
+    // Build a completely new data object and replace — this is the ONLY reliable
+    // way to save Mixed type in Mongoose
+    const newData = {
+      clientId,
+      clientName,
+      fullPhone,
+      fullEmail,
+      maskedPhone,
+      maskedEmail,
+      unlocked: true
+    };
+
+    // Use replaceOne to force full document update — bypasses Mixed type issues
+    await Notification.updateOne(
+      { _id: notif._id },
+      { $set: { data: newData, isRead: true } }
+    );
 
     console.log(`✅ Expert ${expert._id} unlocked interest. Credits: ${balanceBefore} → ${expert.credits}`);
-    console.log(`✅ Client data:`, clientData);
+    console.log(`✅ Saved unlocked data:`, newData);
 
     res.json({
       success: true,
       creditsSpent: UNLOCK_COST,
       newBalance: expert.credits,
       client: {
-        name: clientData.clientName || 'Client',
-        phone: clientData.fullPhone || '',
-        email: clientData.fullEmail || ''
+        name: clientName || 'Client',
+        phone: fullPhone || '',
+        email: fullEmail || ''
       }
     });
   } catch (err) {
