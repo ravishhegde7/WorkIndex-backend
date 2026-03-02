@@ -414,11 +414,12 @@ router.post('/:id/complete', protect, authorize('client'), async (req, res) => {
         console.log(`   Approach ${i+1}: expert=${a.expert.toString()}, match=${a.expert.toString() === expertId}`);
       });
       
-      const approach = await Approach.findOneAndUpdate(
+            const approach = await Approach.findOneAndUpdate(
         { expert: expertId, request: req.params.id },
         { 
           isWorkCompleted: true,
-          workCompletedAt: Date.now()
+          workCompletedAt: Date.now(),
+          status: 'completed'
         },
         { new: true }
       );
