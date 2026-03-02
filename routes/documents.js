@@ -327,5 +327,40 @@ router.post('/:documentId/request-access', protect, authorize('expert'), async (
     res.status(500).json({ success: false, message: 'Error creating access request' });
   }
 });
+// GET CLIENT DOCUMENTS FOR EXPERT via customer interest (no approach required)
+router.get('/client/:clientId/interest', protect, authorize('expert'), async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    
+    const documents = await Document.find({ owner: clientId }).lean();
+    
+    const expertId = req.user.id.toString();
+    const documentsWithAccess = documents.map(function(doc) {
+      var hasAccess = doc.isPublic || (doc.grantedAccess && doc.grantedAccess.some(function(a) {
+        return a.expert.toString() === expertId;
+      }));
+      return {
+        _id: doc._id,
+        originalFileName: doc.originalFileName,
+        fileType: doc.fileType,
+        fileSize: doc.fileSize,
+        category: doc.category,
+        uploadedAt: doc.createdAt,
+        isPublic: doc.isPublic,
+        hasAccess: hasAccess,
+        fileUrl: hasAccess ? doc.fileUrl : null
+      };
+    });
 
+    res.json({
+      success: true,
+      count: documentsWithAccess.length,
+      approachId: null,
+      documents: documentsWithAccess
+    });
+  } catch (error) {
+    console.error('Get client documents (interest) error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching documents' });
+  }
+});
 module.exports = router;
