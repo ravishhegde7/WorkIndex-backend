@@ -29,11 +29,14 @@ const notificationSchema = new mongoose.Schema({
     type: String, // 'admin' or user ID
     default: 'system'
   },
-  link: String // optional deep link in app
+    link: String, // optional deep link in app
+  data: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  }
 }, {
   timestamps: true
 });
-
 notificationSchema.index({ user: 1, isRead: 1 });
 notificationSchema.index({ createdAt: -1 });
 
