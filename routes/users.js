@@ -721,6 +721,7 @@ router.post('/unlock-interest/:notifId', protect, authorize('expert'), async (re
 
     // Mark notification as unlocked
         // Mark notification as unlocked — atomic update to force MongoDB save
+        // Mark notification as unlocked — atomic update to force MongoDB save
     await Notification.findByIdAndUpdate(notif._id, {
       $set: {
         'data.unlocked': true,
@@ -728,19 +729,21 @@ router.post('/unlock-interest/:notifId', protect, authorize('expert'), async (re
       }
     });
 
-    // Re-fetch to get the saved data for response
-    const updatedNotif = await Notification.findById(notif._id);
+    // Use the original notif.data for the response (we already have it in memory)
+    // notif.data has clientName, fullPhone, fullEmail from when we fetched it above
+    const clientData = notif.data || {};
 
     console.log(`✅ Expert ${expert._id} unlocked interest. Credits: ${balanceBefore} → ${expert.credits}`);
+    console.log(`✅ Client data:`, clientData);
 
     res.json({
       success: true,
       creditsSpent: UNLOCK_COST,
       newBalance: expert.credits,
       client: {
-        name: updatedNotif.data.clientName,
-        phone: updatedNotif.data.fullPhone,
-        email: updatedNotif.data.fullEmail
+        name: clientData.clientName || 'Client',
+        phone: clientData.fullPhone || '',
+        email: clientData.fullEmail || ''
       }
     });
   } catch (err) {
