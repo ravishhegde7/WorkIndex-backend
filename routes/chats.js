@@ -119,5 +119,32 @@ router.post('/:chatId/messages', protect, async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+// Direct chat between expert and client (no request needed)
+router.post('/direct', protect, async (req, res) => {
+  try {
+    const { expertId, clientId } = req.body;
+    if (!expertId || !clientId) {
+      return res.status(400).json({ success: false, message: 'expertId and clientId required' });
+    }
 
+    // Check if chat already exists between these two users (any request)
+    let chat = await Chat.findOne({
+      expert: expertId,
+      client: clientId
+    });
+
+    if (!chat) {
+      chat = await Chat.create({
+        expert: expertId,
+        client: clientId,
+        request: null,  // no request
+        lastMessage: ''
+      });
+    }
+
+    res.json({ success: true, chat });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 module.exports = router;
