@@ -1020,5 +1020,41 @@ router.post('/settings/danger/:action', protect, async (req, res) => {
     }
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
-
+// ─── EXPERT INVITES (customer_interest notifications) ───
+router.get('/interests', protect, async (req, res) => {
+  try {
+    const Notification = mongoose.models['Notification'];
+    if (!Notification) return res.json({ success: true, interests: [] });
+    
+    const from = req.query.from, to = req.query.to;
+    const query = { type: 'customer_interest' };
+    addDateFilter(query, 'createdAt', from, to);
+    
+    const interests = await Notification.find(query)
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .lean();
+    
+    // Populate expert info
+    const User = mongoose.model('User');
+    const expertIds = interests.map(n => n.user).filter(Boolean);
+    const experts = await User.find({ _id: { $in: expertIds } }).select('name email').lean();
+    const expertMap = {};
+    experts.forEach(e => { expertMap[String(e._id)] = e; });
+    
+    const enriched = interests.map(n => ({
+      _id: n._id,
+      expert: expertMap[String(n.user)] || { name: 'Unknown' },
+      clientName: n.data?.clientName || 'Client',
+      maskedPhone: n.data?.maskedPhone,
+      maskedEmail: n.data?.maskedEmail,
+      unlocked: n.data?.unlocked || false,
+      createdAt: n.createdAt
+    }));
+    
+    res.json({ success: true, interests: enriched });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 module.exports = router;
