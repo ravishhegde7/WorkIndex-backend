@@ -764,4 +764,35 @@ router.post('/unlock-interest/:notifId', protect, authorize('expert'), async (re
     res.status(500).json({ success: false, message: err.message });
   }
 });
+// GET /api/users/my-invites — client sees which experts they've invited
+router.get('/my-invites', protect, authorize('client'), async (req, res) => {
+  try {
+    const Notification = mongoose.models['Notification'] || require('../models/Notification');
+    
+    // Find all customer_interest notifications where clientId matches this user
+    const invites = await Notification.find({
+      type: 'customer_interest',
+      'data.clientId': req.user._id.toString()
+    }).sort({ createdAt: -1 }).lean();
+
+    // Get expert details
+    const expertIds = invites.map(n => n.user).filter(Boolean);
+    const experts = await User.find({ _id: { $in: expertIds } })
+      .select('name email profilePhoto specialization')
+      .lean();
+    const expertMap = {};
+    experts.forEach(e => { expertMap[String(e._id)] = e; });
+
+    const enriched = invites.map(n => ({
+      _id: n._id,
+      expert: expertMap[String(n.user)] || {},
+      unlocked: (n.data && n.data.unlocked) || false,
+      createdAt: n.createdAt
+    }));
+
+    res.json({ success: true, invites: enriched });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 module.exports = router;
