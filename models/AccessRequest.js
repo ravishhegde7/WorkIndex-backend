@@ -22,11 +22,12 @@ const accessRequestSchema = new mongoose.Schema({
     required: true
   },
   
-  // Related approach (the expert's approach to the request)
+    // Related approach (the expert's approach to the request)
   approach: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Approach',
-    required: true
+    required: false,
+    default: null
   },
   
   // Request details
