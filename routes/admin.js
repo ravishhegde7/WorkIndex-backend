@@ -89,12 +89,22 @@ openApproaches  += openInvites;
     var recentUsers     = await User.find(dateQ).sort({ createdAt: -1 }).limit(5).select('name email role createdAt credits');
     var credits = { totalPurchased: 0, totalSpent: 0, totalRefunded: 0 };
     if (CreditTx) {
-      var agg = await CreditTx.aggregate([{ $match: dateQ }, { $group: { _id: '$type', total: { $sum: '$amount' } } }]);
-      agg.forEach(function(a) {
-        if (a._id === 'purchase') credits.totalPurchased = a.total;
-        if (a._id === 'spent')    credits.totalSpent = Math.abs(a.total);
-        if (a._id === 'refund')   credits.totalRefunded = a.total;
-      });
+      var agg = await CreditTx.aggregate([
+  { $match: dateQ },
+  { $group: {
+    _id: '$type',
+    total: { $sum: '$amount' },
+    totalAmountPaid: { $sum: '$amountPaid' }  // ← ADD THIS
+  }}
+]);
+agg.forEach(function(a) {
+  if (a._id === 'purchase') {
+    credits.totalPurchased = a.total;
+    credits.totalAmountPaid = a.totalAmountPaid || 0;  // ← ADD THIS
+  }
+  if (a._id === 'spent')  credits.totalSpent = Math.abs(a.total);
+  if (a._id === 'refund') credits.totalRefunded = a.total;
+});
     }
     res.json({ success: true, stats: { totalClients, totalExperts, totalRequests, totalApproaches, openApproaches, closedApproaches, pendingRefunds, openTickets, totalReviews, credits }, recentUsers });
   } catch (err) { console.error('Stats error:', err); res.status(500).json({ success: false }); }
