@@ -19,12 +19,12 @@ router.post('/', protect, authorize('client'), async (req, res) => {
     } = req.body;
     
     // Validate required fields
-if (!expertId || !rating || !review) {
-  return res.status(400).json({ 
-    success: false, 
-    message: 'Expert, rating, and review are required' 
-  });
-}
+    if (!expertId || !rating || !review) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Expert, rating, and review are required' 
+      });
+    }
     
     // Validate rating value
     if (rating < 1 || rating > 5) {
@@ -34,31 +34,30 @@ if (!expertId || !rating || !review) {
       });
     }
     
-  // Verify approach if provided (invite-based ratings won't have one)
-let approach = null;
-if (approachId) {
-  approach = await Approach.findById(approachId).populate('request');
-
-  if (!approach) {
-    return res.status(404).json({ success: false, message: 'Approach not found' });
-  }
-  if (approach.request.client.toString() !== req.user.id) {
-    return res.status(403).json({ success: false, message: 'Not authorized - this is not your request' });
-  }
-  if (!approach.isWorkCompleted) {
-    return res.status(400).json({ success: false, message: 'Cannot rate before work is completed' });
-  }
-  if (approach.hasBeenRated) {
-    return res.status(400).json({ success: false, message: 'You have already rated this expert for this request' });
-  }
-}
+    // Verify approach if provided (invite-based ratings won't have one)
+    let approach = null;
+    if (approachId) {
+      approach = await Approach.findById(approachId).populate('request');
+      if (!approach) {
+        return res.status(404).json({ success: false, message: 'Approach not found' });
+      }
+      if (approach.request.client.toString() !== req.user.id) {
+        return res.status(403).json({ success: false, message: 'Not authorized - this is not your request' });
+      }
+      if (!approach.isWorkCompleted) {
+        return res.status(400).json({ success: false, message: 'Cannot rate before work is completed' });
+      }
+      if (approach.hasBeenRated) {
+        return res.status(400).json({ success: false, message: 'You have already rated this expert for this request' });
+      }
+    }
     
     // Create rating
     const ratingDoc = await Rating.create({
       expert: expertId,
       client: req.user.id,
-      request: requestId,
-      approach: approachId,
+      request: requestId || null,
+      approach: approachId || null,
       rating: rating,
       review: review,
       categories: categories || {},
@@ -66,10 +65,11 @@ if (approachId) {
     });
     
     // Update approach if present
-if (approach) {
-  approach.hasBeenRated = true;
-  approach.rating = ratingDoc._id;
-  await approach.save();
+    if (approach) {
+      approach.hasBeenRated = true;
+      approach.rating = ratingDoc._id;
+      await approach.save();
+    }
     
     // Update expert's rating
     const expert = await User.findById(expertId);
@@ -87,14 +87,12 @@ if (approach) {
     });
     
   } catch (error) {
-    // Handle duplicate rating error
     if (error.code === 11000) {
       return res.status(400).json({ 
         success: false, 
         message: 'You have already rated this approach' 
       });
     }
-    
     console.error('Create rating error:', error);
     res.status(500).json({ 
       success: false, 
