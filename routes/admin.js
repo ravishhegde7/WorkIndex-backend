@@ -1043,14 +1043,15 @@ router.get('/interests', protect, async (req, res) => {
     experts.forEach(e => { expertMap[String(e._id)] = e; });
     
     const enriched = interests.map(n => ({
-      _id: n._id,
-      expert: expertMap[String(n.user)] || { name: 'Unknown' },
-      clientName: n.data?.clientName || 'Client',
-      maskedPhone: n.data?.maskedPhone,
-      maskedEmail: n.data?.maskedEmail,
-      unlocked: n.data?.unlocked || false,
-      createdAt: n.createdAt
-    }));
+  _id: n._id,
+  expert: expertMap[String(n.user)] || { name: 'Unknown' },
+  clientName: n.data?.clientName || 'Client',
+  maskedPhone: n.data?.maskedPhone,
+  maskedEmail: n.data?.maskedEmail,
+  unlocked: n.data?.unlocked || false,
+  completed: n.data?.completed || false,   // ← ADD THIS
+  createdAt: n.createdAt
+}));
     
     res.json({ success: true, interests: enriched });
   } catch (err) {
