@@ -110,7 +110,7 @@ router.get('/users', protect, async (req, res) => {
     ];
     addDateFilter(query, 'createdAt', from, to);
             var users = await User.find(query)
-      .select('name email phone role credits createdAt lastLogin isFlagged isBanned isApproved isRejected warnings rating reviewCount profile specialization location kyc')
+      .select('name email phone role credits createdAt lastLogin isFlagged isBanned isApproved isRejected warnings rating reviewCount profile specialization location kyc requests')
       .sort({ createdAt: -1 }).skip(skip).limit(limit);
     var total = await User.countDocuments(query);
     res.json({ success: true, users, total });
