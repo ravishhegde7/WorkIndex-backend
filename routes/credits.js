@@ -200,13 +200,7 @@ router.post('/purchase/verify', protect, authorize('expert'), async (req, res) =
     user.credits += transaction.credits;
     await user.save();
 
-   await CreditTx.create({
-  user: user._id,
-  type: 'purchase',
-  amount: creditsAdded,        // credits count
-  amountPaid: actualRupees,    // actual ₹ paid (600, 2700, 4800 etc)
-  ...
-}); 
+   
     // Also log to CreditTransaction so admin panel can see it
     try {
       const CreditTx = require('../models/CreditTransaction');
