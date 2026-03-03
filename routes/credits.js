@@ -204,10 +204,11 @@ router.post('/purchase/verify', protect, authorize('expert'), async (req, res) =
     // Also log to CreditTransaction so admin panel can see it
     try {
       const CreditTx = require('../models/CreditTransaction');
-      await CreditTx.create({
+            await CreditTx.create({
         user: user._id,
         type: 'purchase',
         amount: transaction.credits,
+        amountPaid: transaction.amount,   // ← ADD THIS
         balanceBefore: oldBalance,
         balanceAfter: user.credits,
         description: 'Credit purchase: ' + transaction.credits + ' credits for Rs.' + transaction.amount,
