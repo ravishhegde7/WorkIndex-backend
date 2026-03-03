@@ -784,14 +784,47 @@ router.get('/my-invites', protect, authorize('client'), async (req, res) => {
     experts.forEach(e => { expertMap[String(e._id)] = e; });
 
     const enriched = invites.map(n => ({
-      _id: n._id,
-      expert: expertMap[String(n.user)] || {},
-      unlocked: (n.data && n.data.unlocked) || false,
-      createdAt: n.createdAt
-    }));
+  _id: n._id,
+  expert: expertMap[String(n.user)] || {},
+  unlocked: (n.data && n.data.unlocked) || false,
+  completed: (n.data && n.data.completed) || false,
+  createdAt: n.createdAt
+}));
 
     res.json({ success: true, invites: enriched });
   } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+// ─── MARK INVITE AS COMPLETED (CLIENT ONLY) ───
+router.post('/invite-complete/:notifId', protect, authorize('client'), async (req, res) => {
+  try {
+    const Notification = mongoose.models['Notification'] || require('../models/Notification');
+    
+    const notif = await Notification.findById(req.params.notifId);
+    if (!notif) {
+      return res.status(404).json({ success: false, message: 'Invite not found' });
+    }
+    
+    // Verify this invite belongs to this client
+    if (!notif.data || notif.data.clientId !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+    
+    // Must be unlocked first
+    if (!notif.data.unlocked) {
+      return res.status(400).json({ success: false, message: 'Invite not yet accepted by expert' });
+    }
+
+    await Notification.updateOne(
+      { _id: notif._id },
+      { $set: { 'data.completed': true, 'data.completedAt': new Date() } }
+    );
+
+    console.log(`✅ Invite ${notif._id} marked completed by client ${req.user._id}`);
+    res.json({ success: true, message: 'Invite marked as completed' });
+  } catch (err) {
+    console.error('Invite complete error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
