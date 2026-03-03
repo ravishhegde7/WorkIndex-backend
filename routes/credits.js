@@ -277,11 +277,12 @@ router.post('/add', protect, authorize('expert'), async (req, res) => {
         balanceBefore: user.credits - credits,
         balanceAfter: user.credits,
         description: 'Manual credit addition: ' + credits + ' credits',
-        purchaseDetails: {
-          packageSize: credits,
-          amountPaid: 0,
-          paymentMethod: 'manual'
-        },
+        // In /credits/add route, change purchaseDetails to:
+purchaseDetails: {
+  packageSize: credits,
+  amountPaid: req.body.amountPaid || 0,  // ← accept from request
+  paymentMethod: 'manual'
+},
         initiatedBy: 'user',
         status: 'completed'
       });
