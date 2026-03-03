@@ -109,7 +109,29 @@ agg.forEach(function(a) {
     res.json({ success: true, stats: { totalClients, totalExperts, totalRequests, totalApproaches, openApproaches, closedApproaches, pendingRefunds, openTickets, totalReviews, credits }, recentUsers });
   } catch (err) { console.error('Stats error:', err); res.status(500).json({ success: false }); }
 });
-
+// ===========================================================
+// DEBUG - TEMPORARY (remove after diagnosis)
+// ===========================================================
+router.get('/debug/credits', protect, async (req, res) => {
+  try {
+    var CreditTx = require('../models/CreditTransaction');
+    var samples = await CreditTx.find({ type: 'purchase' }).limit(5).lean();
+    res.json({
+      count: samples.length,
+      samples: samples.map(function(t) {
+        return {
+          _id: t._id,
+          amount: t.amount,
+          purchaseDetails: t.purchaseDetails,
+          description: t.description,
+          createdAt: t.createdAt
+        };
+      })
+    });
+  } catch(err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 // ===========================================================
 // ALL USERS  (search by name/email/phone)
 // ===========================================================
