@@ -19,16 +19,15 @@ const ratingSchema = new mongoose.Schema({
   
   // Related request and approach
   request: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Request',
-    required: true
-  },
-  
-  approach: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Approach',
-    required: true
-  },
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'Request',
+  required: false
+},
+approach: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'Approach',
+  required: false
+},
   
   // Rating (1-5 stars)
   rating: {
