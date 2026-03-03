@@ -83,12 +83,22 @@ router.post('/login', [
       return res.status(400).json({ success: false, errors: errors.array() });
     }
     
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
     
     const user = await User.findOne({ email }).select('+password');
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
+if (!user) {
+  return res.status(401).json({ success: false, message: 'Invalid credentials' });
+}
+
+// Role check — if frontend specifies a role, enforce it
+if (role && user.role !== role) {
+  return res.status(401).json({ 
+    success: false, 
+    message: user.role === 'expert' 
+      ? 'This account is an expert account. Please use the expert login.' 
+      : 'This account is a client account. Please use the client login.'
+  });
+}
     
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
