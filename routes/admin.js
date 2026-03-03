@@ -70,8 +70,8 @@ router.get('/stats', protect, async (req, res) => {
       if (from) dateQ.createdAt.$gte = new Date(from);
       if (to)   dateQ.createdAt.$lte = new Date(new Date(to).setHours(23,59,59,999));
     }
-    var totalClients    = await User.countDocuments(Object.assign({ role: 'client' }, dateQ));
-    var totalExperts    = await User.countDocuments(Object.assign({ role: 'expert' }, dateQ));
+    var totalClients = await User.countDocuments(Object.assign({ role: 'client', isBanned: { $ne: true } }, dateQ));
+    var totalExperts = await User.countDocuments(Object.assign({ role: 'expert', isBanned: { $ne: true } }, dateQ));
     var totalRequests   = await Request.countDocuments(dateQ);
     var totalApproaches = Approach ? await Approach.countDocuments(dateQ) : 0;
     var openApproaches  = Approach ? await Approach.countDocuments(Object.assign({ status: 'pending' }, dateQ)) : 0;
