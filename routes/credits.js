@@ -208,7 +208,6 @@ router.post('/purchase/verify', protect, authorize('expert'), async (req, res) =
         user: user._id,
         type: 'purchase',
         amount: transaction.credits,
-        amountPaid: transaction.amount,   // ← ADD THIS
         balanceBefore: oldBalance,
         balanceAfter: user.credits,
         description: 'Credit purchase: ' + transaction.credits + ' credits for Rs.' + transaction.amount,
