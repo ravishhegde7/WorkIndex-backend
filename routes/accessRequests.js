@@ -10,10 +10,10 @@ router.post('/', protect, async (req, res) => {
   try {
     const { documentId, approachId, message } = req.body;
     
-    if (!documentId || !approachId || !message) {
+        if (!documentId || !message) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Document ID, approach ID, and message are required' 
+        message: 'Document ID and message are required' 
       });
     }
     
@@ -26,20 +26,21 @@ router.post('/', protect, async (req, res) => {
       });
     }
     
-    // Verify approach exists and belongs to the expert
-    const approach = await Approach.findById(approachId);
-    if (!approach) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Approach not found' 
-      });
-    }
-    
-    if (approach.expert.toString() !== req.user.id) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Not authorized - approach does not belong to you' 
-      });
+        // Verify approach if provided
+    if (approachId) {
+      const approach = await Approach.findById(approachId);
+      if (!approach) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Approach not found' 
+        });
+      }
+      if (approach.expert.toString() !== req.user.id) {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Not authorized - approach does not belong to you' 
+        });
+      }
     }
     
     // Check if access already requested
@@ -57,11 +58,11 @@ router.post('/', protect, async (req, res) => {
     }
     
     // Create access request
-    const accessRequest = await AccessRequest.create({
+        const accessRequest = await AccessRequest.create({
       document: documentId,
       expert: req.user.id,
       client: document.owner._id,
-      approach: approachId,
+      approach: approachId || null,
       message,
       status: 'pending'
     });
