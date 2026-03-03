@@ -94,8 +94,8 @@ openApproaches  += openInvites;
   { $group: {
     _id: '$type',
     total: { $sum: '$amount' },
-    totalAmountPaid: { $sum: '$amountPaid' }  // ← ADD THIS
-  }}
+    totalAmountPaid: { $sum: '$purchaseDetails.amountPaid' }  // ← nested path
+}}
 ]);
 agg.forEach(function(a) {
   if (a._id === 'purchase') {
