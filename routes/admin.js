@@ -74,7 +74,14 @@ router.get('/stats', protect, async (req, res) => {
     var totalExperts = await User.countDocuments(Object.assign({ role: 'expert', isBanned: { $ne: true } }, dateQ));
     var totalRequests   = await Request.countDocuments(dateQ);
     var totalApproaches = Approach ? await Approach.countDocuments(dateQ) : 0;
-    var openApproaches  = Approach ? await Approach.countDocuments(Object.assign({ status: 'pending' }, dateQ)) : 0;
+var openApproaches  = Approach ? await Approach.countDocuments(Object.assign({ status: 'pending' }, dateQ)) : 0;
+
+// Add expert invites (customer_interest notifications) to approach counts
+var Notification = safeModel('Notification');
+var totalInvites = Notification ? await Notification.countDocuments(Object.assign({ type: 'customer_interest' }, dateQ)) : 0;
+var openInvites  = Notification ? await Notification.countDocuments(Object.assign({ type: 'customer_interest', 'data.completed': { $ne: true } }, dateQ)) : 0;
+totalApproaches += totalInvites;
+openApproaches  += openInvites;
     var closedApproaches = totalApproaches - openApproaches;
     var pendingRefunds  = Ticket ? await Ticket.countDocuments({ status: 'pending_review' }) : 0;
     var openTickets     = Ticket ? await Ticket.countDocuments({ status: 'open' }) : 0;
