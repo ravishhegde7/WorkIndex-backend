@@ -403,5 +403,37 @@ router.post('/verify-email',    async (req, res) => res.json({ success: true }))
 router.post('/send-phone-otp',  async (req, res) => res.json({ success: true }));
 router.post('/verify-phone',    async (req, res) => res.json({ success: true }));
 router.post('/resend-otp',      async (req, res) => res.json({ success: true }));
+// ─── TEMPORARY DEBUG - remove after fixing email ───
+router.get('/debug-email', async (req, res) => {
+  const https = require('https');
+  
+  const testReq = https.get('https://api.brevo.com/v3/account', {
+    headers: { 'api-key': process.env.BREVO_API_KEY }
+  }, (testRes) => {
+    let data = '';
+    testRes.on('data', chunk => data += chunk);
+    testRes.on('end', () => {
+      res.json({
+        statusCode: testRes.statusCode,
+        envVars: {
+          BREVO_API_KEY: !!process.env.BREVO_API_KEY,
+          BREVO_SMTP_USER: process.env.BREVO_SMTP_USER || 'NOT SET',
+          FROM_EMAIL: process.env.FROM_EMAIL || 'NOT SET'
+        },
+        brevoResponse: data.substring(0, 300)
+      });
+    });
+  });
+  
+  testReq.on('error', (err) => {
+    res.json({ 
+      error: err.message,
+      envVars: {
+        BREVO_API_KEY: !!process.env.BREVO_API_KEY,
+        BREVO_SMTP_USER: process.env.BREVO_SMTP_USER || 'NOT SET'
+      }
+    });
+  });
+});
 
 module.exports = router;
