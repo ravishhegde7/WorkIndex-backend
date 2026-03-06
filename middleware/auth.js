@@ -14,13 +14,17 @@ exports.protect = async (req, res, next) => {
       });
     }
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id);
+   req.user = await User.findById(decoded.id);
     if (!req.user) {
       return res.status(401).json({
         success: false,
         message: 'User not found'
       });
     }
+
+    // Update lastOnline silently (don't await — non-blocking)
+    User.findByIdAndUpdate(decoded.id, { lastOnline: new Date() }).catch(() => {});
+
     next();
   } catch (error) {
     return res.status(401).json({
