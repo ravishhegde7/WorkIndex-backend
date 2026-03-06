@@ -65,7 +65,10 @@ router.get('/me', protect, async (req, res) => {
           rejectionReason: user.kyc.rejectionReason
         } : { status: 'not_submitted' },
         totalApproaches: user.totalApproaches || 0,
-        responseRate: user.responseRate || 0
+        responseRate: user.responseRate || 0,
+        availability: user.availability || 'available',
+        whyChooseMe: user.whyChooseMe || '',
+        lastOnline: user.lastOnline || null
       }
     });
   } catch (error) {
