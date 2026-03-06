@@ -109,7 +109,7 @@ router.put('/me', protect, async (req, res) => {
       if (servicesOffered) updateData.servicesOffered = servicesOffered;
       if (certifications) updateData.certifications = certifications;
     }
-    
+    if (req.body.whyChooseMe !== undefined) updateData.whyChooseMe = req.body.whyChooseMe;
     if (location) updateData.location = location;
     
     const user = await User.findByIdAndUpdate(
