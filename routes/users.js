@@ -334,7 +334,7 @@ router.post('/portfolio', protect, authorize('expert'), upload.single('image'), 
 // Update profile data (for expert questionnaire)
 router.put('/profile', protect, async (req, res) => {
   try {
-    const { profile } = req.body;
+    const profile = req.body.profile || {};
 
     // Build location update from all possible sources
     const locationUpdate = {};
