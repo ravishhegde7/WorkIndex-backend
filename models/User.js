@@ -218,7 +218,18 @@ const userSchema = new mongoose.Schema({
     }
   },
 
-  lastLogin: Date
+  lastLogin: Date,
+  lastOnline: Date,
+  availability: {
+    type: String,
+    enum: ['available', 'busy', 'away'],
+    default: 'available'
+  },
+  whyChooseMe: {
+    type: String,
+    maxlength: 500,
+    default: ''
+  }
 
 }, {
   timestamps: true
