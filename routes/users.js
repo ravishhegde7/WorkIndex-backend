@@ -355,11 +355,15 @@ router.put('/profile', protect, async (req, res) => {
       if (profile.clientLocation.pincode) locationUpdate['location.pincode'] = profile.clientLocation.pincode;
     }
 
+    const topLevelUpdate = {};
+    if (req.body.whyChooseMe !== undefined) topLevelUpdate.whyChooseMe = req.body.whyChooseMe;
+
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { 
         profile: profile,
-        ...locationUpdate
+        ...locationUpdate,
+        ...topLevelUpdate
       },
       { new: true, runValidators: false }
     ).select('-password');
@@ -826,6 +830,19 @@ router.post('/invite-complete/:notifId', protect, authorize('client'), async (re
   } catch (err) {
     console.error('Invite complete error:', err);
     res.status(500).json({ success: false, message: err.message });
+  }
+});
+// ─── UPDATE AVAILABILITY (EXPERT ONLY) ───
+router.put('/availability', protect, authorize('expert'), async (req, res) => {
+  try {
+    const { availability } = req.body;
+    if (!['available', 'busy', 'away'].includes(availability)) {
+      return res.status(400).json({ success: false, message: 'Invalid availability status' });
+    }
+    await User.findByIdAndUpdate(req.user.id, { availability });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 module.exports = router;
