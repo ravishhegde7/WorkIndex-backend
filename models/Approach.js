@@ -20,6 +20,11 @@ const approachSchema = new mongoose.Schema({
     required: [true, 'Message is required'],
     trim: true
   },
+  quote: {
+    type: Number,
+    default: null,
+    min: 0
+  },
   creditsSpent: {
     type: Number,
     required: true,
