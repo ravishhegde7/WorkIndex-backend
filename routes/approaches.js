@@ -8,7 +8,7 @@ const User = require('../models/User');
 // ─── CREATE NEW APPROACH (EXPERT ONLY) ───
 router.post('/', protect, authorize('expert'), async (req, res) => {
   try {
-    const { request: requestId, message } = req.body;
+    const { request: requestId, message, quote } = req.body;
     
     console.log('💼 Expert approaching request:');
     console.log('  Expert:', req.user.id);
@@ -76,14 +76,15 @@ router.post('/', protect, authorize('expert'), async (req, res) => {
     
     // Create approach
     const approach = await Approach.create({
-      request: requestId,
-      expert: req.user.id,
-      client: request.client,
-      message: message || 'I am interested in helping with your request.',
-      creditsSpent: creditsRequired,
-      status: 'pending',
-      contactUnlocked: true  // Credits spent, contact is unlocked
-    });
+  request: requestId,
+  expert: req.user.id,
+  client: request.client,
+  message: message || 'I am interested in helping with your request.',
+  quote: quote || null,
+  creditsSpent: creditsRequired,
+  status: 'pending',
+  contactUnlocked: true
+});
     
     // Increment approach count on request
     request.approachCount = (request.approachCount || 0) + 1;
