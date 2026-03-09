@@ -1098,4 +1098,56 @@ router.get('/interests', protect, async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+// ===========================================================
+// SUSPENDED REQUESTS — GET ALL
+// ===========================================================
+router.get('/suspended-requests', protect, async (req, res) => {
+  try {
+    var Request = mongoose.model('Request');
+    var requests = await Request.find({ isSuspended: true })
+      .populate('client', 'name email')
+      .sort({ suspendedAt: -1 })
+      .lean();
+    res.json({ success: true, requests });
+  } catch (err) {
+    console.error('Suspended requests error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ===========================================================
+// SUSPENDED REQUESTS — RESTORE OR DELETE
+// ===========================================================
+router.post('/suspended-requests/:id/action', protect, async (req, res) => {
+  try {
+    var Request = mongoose.model('Request');
+    var User = mongoose.model('User');
+    var action = req.body.action; // 'restore' or 'delete'
+
+    var request = await Request.findById(req.params.id);
+    if (!request) return res.status(404).json({ success: false, message: 'Request not found' });
+
+    if (action === 'restore') {
+      request.isSuspended   = false;
+      request.suspendedAt   = null;
+      request.suspendReason = null;
+      request.reports       = [];
+      await request.save();
+      // Unrestrict the client too
+      await User.findByIdAndUpdate(request.client, { isRestricted: false });
+      res.json({ success: true, message: 'Request restored and client unrestricted' });
+
+    } else if (action === 'delete') {
+      await request.deleteOne();
+      res.json({ success: true, message: 'Request permanently deleted' });
+
+    } else {
+      res.status(400).json({ success: false, message: 'Invalid action' });
+    }
+  } catch (err) {
+    console.error('Suspended request action error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;
