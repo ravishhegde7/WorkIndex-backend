@@ -521,10 +521,8 @@ router.post('/:id/report', protect, authorize('expert'), async (req, res) => {
       }
     }
     
-    const msg = reportCount >= 3
-      ? 'Report submitted. This request has been flagged and the client account restricted pending admin review.'
-      : `Report submitted (${reportCount}/3). Thank you for keeping the platform safe.`;
-
+    const msg = 'Report submitted. Thank you for keeping the platform safe.';
+    
     console.log(`🚩 Request ${request._id} reported by ${reporterId} — total reports: ${reportCount}`);
     res.json({ success: true, message: msg });
 
