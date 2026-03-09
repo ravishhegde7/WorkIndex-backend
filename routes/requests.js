@@ -477,5 +477,53 @@ router.get('/test-approach-update', protect, async (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+// ─── REPORT A REQUEST — POST /api/requests/:id/report ───
+router.post('/:id/report', protect, authorize('expert'), async (req, res) => {
+  try {
+    const { reason, note } = req.body;
+    const reporterId = req.user.id;
+
+    const request = await Request.findById(req.params.id);
+    if (!request) return res.status(404).json({ success: false, message: 'Request not found' });
+
+    // Prevent duplicate reports from same expert
+    const alreadyReported = (request.reports || []).some(r => r.by.toString() === reporterId);
+    if (alreadyReported) return res.json({ success: false, message: 'You have already reported this request' });
+
+    // Add report
+    if (!request.reports) request.reports = [];
+    request.reports.push({ by: reporterId, reason, note: note || '', date: new Date() });
+    await request.save();
+
+    const reportCount = request.reports.length;
+
+    // Auto-restrict client at 3+ reports
+    if (reportCount >= 3) {
+      const User = require('../models/User');
+      const client = await User.findById(request.client);
+      if (client && !client.isRestricted) {
+        client.isRestricted = true;
+        client.lastWarning = {
+          reason: `Request "${request.title}" was reported by ${reportCount} experts as suspicious`,
+          date: new Date(),
+          by: 'system'
+        };
+        await client.save();
+        console.log(`⚠️ Client ${client._id} auto-restricted after ${reportCount} reports on request ${request._id}`);
+      }
+    }
+
+    const msg = reportCount >= 3
+      ? 'Report submitted. This request has been flagged and the client account restricted pending admin review.'
+      : `Report submitted (${reportCount}/3). Thank you for keeping the platform safe.`;
+
+    console.log(`🚩 Request ${request._id} reported by ${reporterId} — total reports: ${reportCount}`);
+    res.json({ success: true, message: msg });
+
+  } catch (err) {
+    console.error('❌ Report request error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
 
 module.exports = router;
