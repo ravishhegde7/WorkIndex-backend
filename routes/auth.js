@@ -439,5 +439,17 @@ router.get('/debug-email', async (req, res) => {
     });
   });
 });
+// GET /api/auth/me — fresh restriction/warning status
+const { protect } = require('../middleware/auth');
+router.get('/me', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id || req.user.userId)
+      .select('warnings lastWarning isRestricted isFlagged isBanned credits').lean();
+    if (!user) return res.status(404).json({ success: false });
+    res.json({ success: true, user });
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+});
 
 module.exports = router;
