@@ -103,7 +103,11 @@ const requestSchema = new mongoose.Schema({
       note:   { type: String, default: '' },
       date:   { type: Date, default: Date.now }
     }
-  ]
+  ],
+
+  isSuspended:   { type: Boolean, default: false },
+  suspendedAt:   { type: Date, default: null },
+  suspendReason: { type: String, default: null }
 }, {
   timestamps: true  // Adds createdAt and updatedAt
 });
