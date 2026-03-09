@@ -94,7 +94,16 @@ const requestSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     default: null
-  }
+  },
+
+  reports: [
+    {
+      by:     { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      reason: { type: String },
+      note:   { type: String, default: '' },
+      date:   { type: Date, default: Date.now }
+    }
+  ]
 }, {
   timestamps: true  // Adds createdAt and updatedAt
 });
