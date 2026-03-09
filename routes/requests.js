@@ -497,8 +497,15 @@ router.post('/:id/report', protect, authorize('expert'), async (req, res) => {
 
     const reportCount = request.reports.length;
 
-    // Auto-restrict client at 3+ reports
+    // Auto-restrict client + suspend post at 3+ reports
     if (reportCount >= 3) {
+      // Suspend the post
+      request.isSuspended   = true;
+      request.suspendedAt   = new Date();
+      request.suspendReason = `Reported by ${reportCount} experts as suspicious`;
+      await request.save();
+
+      // Restrict the client
       const User = require('../models/User');
       const client = await User.findById(request.client);
       if (client && !client.isRestricted) {
@@ -512,7 +519,7 @@ router.post('/:id/report', protect, authorize('expert'), async (req, res) => {
         console.log(`⚠️ Client ${client._id} auto-restricted after ${reportCount} reports on request ${request._id}`);
       }
     }
-
+    
     const msg = reportCount >= 3
       ? 'Report submitted. This request has been flagged and the client account restricted pending admin review.'
       : `Report submitted (${reportCount}/3). Thank you for keeping the platform safe.`;
