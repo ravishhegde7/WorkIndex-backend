@@ -257,7 +257,11 @@ router.post('/login', [
         profile:       user.profile || {},
         profilePhoto:  user.profilePhoto,
         location:      user.location,
-        preferences:   user.preferences
+        preferences:   user.preferences,
+        warnings:      user.warnings || 0,
+        lastWarning:   user.lastWarning || null,
+        isRestricted:  user.isRestricted || false,
+        isFlagged:     user.isFlagged || false
       }
     });
 
