@@ -35,7 +35,8 @@ router.get('/available', protect, authorize('expert'), async (req, res) => {
 
     const requests = await Request.find({
   _id: { $nin: approachedRequestIds },
-  status: { $in: ['pending', 'active'] }
+  status: { $in: ['pending', 'active'] },
+  isSuspended: { $ne: true }
 })
 .sort('-createdAt')
 .limit(50)
