@@ -1115,6 +1115,69 @@ router.get('/interests', protect, async (req, res) => {
   }
 });
 // ===========================================================
+// REPORTS — GET ALL (aggregated from Request.reports)
+// ===========================================================
+router.get('/reports', protect, async (req, res) => {
+  try {
+    var Request = mongoose.model('Request');
+    var User = mongoose.model('User');
+
+    // Get all requests that have at least 1 report
+    var requests = await Request.find({ 'reports.0': { $exists: true } })
+      .populate('client', 'name email isRestricted isBanned')
+      .select('title reports client isSuspended')
+      .sort({ 'reports.0.date': -1 })
+      .lean();
+
+    var reports = [];
+    requests.forEach(function(req) {
+      (req.reports || []).forEach(function(rp) {
+        reports.push({
+          _id: String(rp._id || rp.by),
+          reporterRole: 'expert',
+          reporterName: null,
+          reporterEmail: null,
+          reporterId: String(rp.by),
+          reportedUserId: req.client ? String(req.client._id) : '',
+          reportedUserName: req.client ? req.client.name : '-',
+          reportedUserEmail: req.client ? req.client.email : '',
+          targetIsRestricted: req.client ? req.client.isRestricted : false,
+          targetIsBanned: req.client ? req.client.isBanned : false,
+          category: rp.reason || 'Suspicious request',
+          message: rp.note || '',
+          requestTitle: req.title || '',
+          createdAt: rp.date || new Date()
+        });
+      });
+    });
+
+    // Populate reporter names (experts who reported)
+    var reporterIds = reports.map(function(r) { return r.reporterId; }).filter(Boolean);
+    if (reporterIds.length) {
+      var reporters = await User.find({ _id: { $in: reporterIds } }).select('name email role').lean();
+      var reporterMap = {};
+      reporters.forEach(function(u) { reporterMap[String(u._id)] = u; });
+      reports.forEach(function(r) {
+        var reporter = reporterMap[r.reporterId];
+        if (reporter) {
+          r.reporterName = reporter.name;
+          r.reporterEmail = reporter.email;
+          r.reporterRole = reporter.role;
+        }
+      });
+    }
+
+    // Sort by date desc
+    reports.sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
+
+    res.json({ success: true, reports: reports });
+  } catch (err) {
+    console.error('Reports error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ===========================================================
 // SUSPENDED REQUESTS — GET ALL
 // ===========================================================
 router.get('/suspended-requests', protect, async (req, res) => {
