@@ -548,8 +548,24 @@ router.post('/users/:id/action', protect, async (req, res) => {
     else if (action === 'unban')   { user.isBanned = false; user.isFlagged = false;  msg = 'User unbanned'; }
     else if (action === 'flag')    { user.isFlagged = true;  msg = 'User flagged'; }
     else if (action === 'unflag')  { user.isFlagged = false; msg = 'User unflagged'; }
-    else if (action === 'warn')    { user.warnings = (user.warnings || 0) + 1; user.lastWarning = { reason: reason, date: new Date(), by: req.admin.adminId }; if (user.warnings >= 3) { user.isRestricted = true; } msg = 'Warning issued' + (user.warnings >= 3 ? ' — account restricted (3 warnings)' : ' (' + user.warnings + '/3)'); }
-    else if (action === 'unrestrict') { user.isRestricted = false; msg = 'Restriction lifted'; }
+    else if (action === 'warn') {
+  user.warnings = (user.warnings || 0) + 1;
+  user.lastWarning = { reason: reason, date: new Date(), by: req.admin.adminId };
+  if (user.warnings >= 3) {
+    user.isRestricted = true;
+    user.markModified('isRestricted');
+  }
+  user.markModified('warnings');
+  user.markModified('lastWarning');
+  msg = 'Warning issued' + (user.warnings >= 3 ? ' — account restricted (3 warnings)' : ' (' + user.warnings + '/3)');
+}
+    else if (action === 'unrestrict') {
+  user.isRestricted = false;
+  user.warnings = 0;
+  user.markModified('isRestricted');
+  user.markModified('warnings');
+  msg = 'Restriction lifted and warnings reset';
+}
     else if (action === 'approve') { user.isApproved = true; user.isRejected = false; msg = 'Expert approved'; }
     else if (action === 'reject')  { user.isRejected = true; user.isApproved = false; msg = 'Expert rejected'; }
     else return res.status(400).json({ success: false, message: 'Unknown action' });
