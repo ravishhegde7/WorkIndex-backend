@@ -172,6 +172,15 @@ router.post('/', protect, authorize('client'), async (req, res) => {
     console.log('  ID:', request._id);
     console.log('  Service:', request.service);
     console.log('  Credits:', request.credits);
+
+    // Email client: post created
+    try {
+      const { sendClientPostCreated } = require('../utils/notificationEmailService');
+      sendClientPostCreated({
+        to: req.user.email, name: req.user.name,
+        postTitle: title, service: service, userId: req.user._id
+      }).catch(() => {});
+    } catch(e) {}
     
     res.status(201).json({ 
       success: true, 
