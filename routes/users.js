@@ -543,18 +543,37 @@ router.post('/:id/block', protect, authorize('client'), async (req, res) => {
       $addToSet: { blockedExperts: expertId }
     });
 
-    // If also reporting, log on expert's record
+    // If also reporting, issue warning to expert
     if (report) {
-      await User.findByIdAndUpdate(expertId, {
-        $inc: { reportCount: 1 },
-        $push: {
-          reports: {
-            reportedBy: req.user._id,
-            reason: reason || 'Reported by client',
-            date: new Date()
-          }
+      const expert = await User.findById(expertId);
+      if (expert) {
+        expert.reportCount = (expert.reportCount || 0) + 1;
+        expert.reports = expert.reports || [];
+        expert.reports.push({
+          reportedBy: req.user._id,
+          reason: reason || 'Reported by client',
+          date: new Date()
+        });
+
+        expert.warnings = (expert.warnings || 0) + 1;
+        expert.lastWarning = {
+          reason: `A client reported you: ${reason || 'Inappropriate behavior or platform violation'}`,
+          date: new Date(),
+          by: 'system'
+        };
+        expert.markModified('warnings');
+        expert.markModified('lastWarning');
+        expert.markModified('reports');
+
+        if (expert.warnings >= 3) {
+          expert.isRestricted = true;
+          expert.markModified('isRestricted');
+          console.log(`🚫 Expert ${expertId} auto-restricted after ${expert.warnings} warnings`);
         }
-      });
+
+        await expert.save();
+        console.log(`⚠️ Warning ${expert.warnings}/3 issued to expert ${expertId} — reported by client ${req.user._id}`);
+      }
     }
 
     console.log(`✅ User ${req.user._id} blocked expert ${expertId}. Report: ${report}`);
