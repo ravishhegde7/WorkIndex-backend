@@ -576,11 +576,21 @@ router.post('/:id/block', protect, authorize('client'), async (req, res) => {
       }
     }
 
+    // Email expert if now restricted from client report
+    if (report && expert && expert.isRestricted) {
+      try {
+        const { sendExpertRestricted, sendAdminUserRestricted } = require('../utils/notificationEmailService');
+        sendExpertRestricted({ to: expert.email, name: expert.name, reason: reason || 'Multiple client reports', warningCount: expert.warnings, userId: expert._id }).catch(() => {});
+        sendAdminUserRestricted({ userName: expert.name, userEmail: expert.email, userRole: 'expert', reason: reason || 'Auto-restricted after 3 client reports', warningCount: expert.warnings, restrictedBy: 'system' }).catch(() => {});
+      } catch(e) {}
+    }
+
     console.log(`✅ User ${req.user._id} blocked expert ${expertId}. Report: ${report}`);
     res.json({
       success: true,
       message: report ? 'Expert blocked and reported' : 'Expert blocked'
     });
+    
   } catch (err) {
     console.error('Block expert error:', err);
     res.status(500).json({ success: false, message: err.message });
