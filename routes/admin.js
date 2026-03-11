@@ -1165,7 +1165,54 @@ router.get('/reports', protect, async (req, res) => {
         }
       });
     }
+// Also fetch expert reports (client-reported experts)
+    const reportedExperts = await User.find({ 
+      'reports.0': { $exists: true }, 
+      role: 'expert' 
+    })
+      .select('name email reports isRestricted isBanned')
+      .lean();
 
+    reportedExperts.forEach(function(expert) {
+      (expert.reports || []).forEach(function(rp) {
+        reports.push({
+          _id: String(rp._id || rp.reportedBy),
+          reporterRole: 'client',
+          reporterName: null,
+          reporterEmail: null,
+          reporterId: String(rp.reportedBy),
+          reportedUserId: String(expert._id),
+          reportedUserName: expert.name,
+          reportedUserEmail: expert.email,
+          targetIsRestricted: expert.isRestricted || false,
+          targetIsBanned: expert.isBanned || false,
+          category: rp.reason || 'Reported by client',
+          message: rp.reason || '',
+          requestTitle: '',
+          createdAt: rp.date || new Date()
+        });
+      });
+    });
+
+    // Populate client reporter names
+    const clientReporterIds = reportedExperts.flatMap(e => 
+      (e.reports || []).map(r => String(r.reportedBy))
+    ).filter(Boolean);
+
+    if (clientReporterIds.length) {
+      const clientReporters = await User.find({ 
+        _id: { $in: clientReporterIds } 
+      }).select('name email role').lean();
+      const clientMap = {};
+      clientReporters.forEach(u => { clientMap[String(u._id)] = u; });
+      reports.forEach(function(r) {
+        if (r.reporterRole === 'client' && !r.reporterName) {
+          const cr = clientMap[r.reporterId];
+          if (cr) { r.reporterName = cr.name; r.reporterEmail = cr.email; }
+        }
+      });
+    }
+    
     // Sort by date desc
     reports.sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
 
