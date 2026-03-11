@@ -132,6 +132,12 @@ router.post('/verify-otp-register', [
     user.otpExpiry = undefined;
     await user.save();
 
+try {
+  const { sendClientWelcome, sendExpertWelcome } = require('../utils/notificationEmailService');
+  if (user.role === 'client') sendClientWelcome({ to: user.email, name: user.name }).catch(() => {});
+  else sendExpertWelcome({ to: user.email, name: user.name }).catch(() => {});
+} catch(e) {}
+    
     const token = generateToken(user._id);
 
     res.status(201).json({
