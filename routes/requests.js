@@ -5,25 +5,78 @@ const Request = require('../models/Request');
 const Approach = require('../models/Approach');
 
 const calculateCredits = (service, answers) => {
-  const base = { itr: 15, gst: 20, accounting: 25, audit: 30, photography: 18, development: 35 };
+  // ─── BASE CREDITS PER SERVICE ───────────────────────────
+  // Change these numbers to adjust the default cost per service
+  const base = {
+    itr:          15,   // ITR Filing
+    gst:          20,   // GST Services
+    accounting:   25,   // Accounting / Bookkeeping
+    audit:        30,   // Audit Services
+    photography:  18,   // Photography
+    development:  35    // App / Web Development
+  };
+
   let credits = base[service] || 20;
-  
-  if (service === 'itr' && answers) {
-    if (answers.itrAnnualIncome === 'above20') credits = 25;
+  if (!answers) return credits;
+
+  // ─── ITR: bump based on income bracket & complexity ─────
+  if (service === 'itr') {
+    if (answers.itrAnnualIncome === '10-15')  credits = 18;
+    if (answers.itrAnnualIncome === '15-20')  credits = 22;
+    if (answers.itrAnnualIncome === 'above20') credits = 28;
+    // Extra complexity: business income source
     if (answers.itrIncomeSources && answers.itrIncomeSources.includes('business')) credits += 5;
+    // Extra: foreign income
+    if (answers.itrIncomeSources && answers.itrIncomeSources.includes('foreign')) credits += 5;
   }
-  
-  if (service === 'gst' && answers) {
-    if (answers.gstTurnover === 'above50') credits = 30;
+
+  // ─── GST: bump based on turnover ────────────────────────
+  if (service === 'gst') {
+    if (answers.gstTurnover === '5-20')   credits = 22;
+    if (answers.gstTurnover === '20-50')  credits = 27;
+    if (answers.gstTurnover === 'above50') credits = 35;
   }
-  
-  if (service === 'accounting' && answers) {
-    if (answers.accountingTransactions === 'above2000') credits = 35;
+
+  // ─── ACCOUNTING: bump based on transaction volume ────────
+  if (service === 'accounting') {
+    if (answers.accountingTransactions === '100-500')  credits = 28;
+    if (answers.accountingTransactions === '500-2000') credits = 32;
+    if (answers.accountingTransactions === 'above2000') credits = 40;
   }
-  
+
+  // ─── AUDIT: bump based on org turnover ──────────────────
+  if (service === 'audit') {
+    if (answers.auditTurnover === '1-5cr')    credits = 35;
+    if (answers.auditTurnover === '5-20cr')   credits = 45;
+    if (answers.auditTurnover === 'above20cr') credits = 60;
+  }
+
+  // ─── PHOTOGRAPHY: bump based on duration ────────────────
+  if (service === 'photography') {
+    if (answers.photographyDuration === 'half-day')  credits = 22;
+    if (answers.photographyDuration === 'full-day')  credits = 28;
+    if (answers.photographyDuration === 'multiple')  credits = 35;
+    // Extra: videography included
+    if (answers.photographyVideography === 'yes') credits += 5;
+  }
+
+  // ─── DEVELOPMENT: bump based on project type ────────────
+  if (service === 'development') {
+    if (answers.devProjectType === 'website')      credits = 30;
+    if (answers.devProjectType === 'ecommerce')    credits = 38;
+    if (answers.devProjectType === 'mobile-app')   credits = 45;
+    if (answers.devProjectType === 'web-app')      credits = 50;
+    if (answers.devProjectType === 'custom')       credits = 55;
+    // Extra: needs ongoing maintenance
+    if (answers.devMaintenance === 'yes') credits += 5;
+  }
+
+  // ─── GLOBAL CAP (optional — remove if you don't want a ceiling) ─
+  const MAX_CREDITS = 60;
+  credits = Math.min(credits, MAX_CREDITS);
+
   return credits;
 };
-
 // ─── GET AVAILABLE REQUESTS FOR EXPERTS (NOT YET APPROACHED) ───
 router.get('/available', protect, authorize('expert'), async (req, res) => {
   try {
