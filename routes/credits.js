@@ -298,6 +298,17 @@ purchaseDetails: {
         status: 'completed'
       });
     } catch(e) { console.error('CreditTx log failed:', e.message); }
+
+     // Email expert: credits added
+    try {
+      const { sendExpertCreditsPurchased } = require('../utils/notificationEmailService');
+      sendExpertCreditsPurchased({
+        to: user.email, name: user.name,
+        creditsPurchased: credits,
+        amountPaid: req.body.amountPaid || 0,
+        newBalance: user.credits, userId: user._id
+      }).catch(() => {});
+    } catch(e) {}
     
     res.json({ 
       success: true, 
