@@ -221,6 +221,17 @@ router.post('/purchase/verify', protect, authorize('expert'), async (req, res) =
         status: 'completed'
       });
     } catch(e) { console.error('CreditTx log failed:', e.message); }
+
+    // Email expert: credits purchased
+    try {
+      const { sendExpertCreditsPurchased } = require('../utils/notificationEmailService');
+      sendExpertCreditsPurchased({
+        to: user.email, name: user.name,
+        creditsPurchased: transaction.credits,
+        amountPaid: transaction.amount,
+        newBalance: user.credits, userId: user._id
+      }).catch(() => {});
+    } catch(e) {}
     
     res.json({
       success: true,
