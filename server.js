@@ -69,8 +69,8 @@ require('./models/CommunicationLog');
 require('./models/FailedPayment');
 require('./models/Notification');
 require('./models/SupportTicket');
-
-
+require('./models/EmailSettings');
+require('./models/EmailLog');
 
 
 // Register routes
@@ -142,6 +142,15 @@ mongoose.connect(process.env.MONGODB_URI, {
   console.log(`📊 Database: ${mongoose.connection.name}`);
   
   app.listen(PORT, () => {
+    // ─── CRON: Daily ticket digest at 9:30 PM IST ───
+    const cron = require('node-cron');
+    const { sendAdminDailyTicketDigest } = require('./utils/notificationEmailService');
+    cron.schedule('0 16 * * *', async () => {
+      console.log('⏰ Running daily ticket digest cron...');
+      await sendAdminDailyTicketDigest();
+    }, { timezone: 'Asia/Kolkata' });
+    console.log('✅ Daily ticket digest cron scheduled');
+    
     console.log('🚀 ═══════════════════════════════════════════════════');
     console.log(`🚀 WorkIndex Server running on port ${PORT}`);
     console.log(`🚀 Environment: ${process.env.NODE_ENV || 'development'}`);
