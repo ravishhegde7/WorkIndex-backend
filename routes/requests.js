@@ -498,33 +498,37 @@ router.post('/:id/report', protect, authorize('expert'), async (req, res) => {
 
     const reportCount = request.reports.length;
 
-    // Auto-restrict client + suspend post at 3+ reports
-    if (reportCount >= 3) {
-      // Suspend the post
-      request.isSuspended   = true;
-      request.suspendedAt   = new Date();
-      request.suspendReason = `Reported by ${reportCount} experts as suspicious`;
-      await request.save();
+    // Issue warning to client on every report + restrict at 3
+    const User = require('../models/User');
+    const client = await User.findById(request.client);
+    if (client) {
+      client.warnings = (client.warnings || 0) + 1;
+      client.lastWarning = {
+        reason: `Your post "${request.title}" was reported by a professional: ${reason || 'Suspicious request'}`,
+        date: new Date(),
+        by: 'system'
+      };
+      client.markModified('warnings');
+      client.markModified('lastWarning');
 
-      // Restrict the client
-      const User = require('../models/User');
-      const client = await User.findById(request.client);
-      if (client && !client.isRestricted) {
+      // At 3 reports: suspend post + restrict client
+      if (reportCount >= 3) {
+        request.isSuspended   = true;
+        request.suspendedAt   = new Date();
+        request.suspendReason = `Reported by ${reportCount} experts as suspicious`;
+        await request.save();
+
         client.isRestricted = true;
-        client.lastWarning = {
-          reason: `Request "${request.title}" was reported by ${reportCount} experts as suspicious`,
-          date: new Date(),
-          by: 'system'
-        };
-        await client.save();
-        console.log(`⚠️ Client ${client._id} auto-restricted after ${reportCount} reports on request ${request._id}`);
+        client.markModified('isRestricted');
+        console.log(`🚫 Client ${client._id} auto-restricted after ${reportCount} reports on request ${request._id}`);
       }
+
+      await client.save();
+      console.log(`⚠️ Warning ${client.warnings}/3 issued to client ${client._id} — report on request ${request._id}`);
     }
-    
-    const msg = 'Report submitted. Thank you for keeping the platform safe.';
-    
+
     console.log(`🚩 Request ${request._id} reported by ${reporterId} — total reports: ${reportCount}`);
-    res.json({ success: true, message: msg });
+    res.json({ success: true, message: 'Report submitted. Thank you for keeping the platform safe.' });
 
   } catch (err) {
     console.error('❌ Report request error:', err);
