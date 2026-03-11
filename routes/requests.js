@@ -536,9 +536,20 @@ router.post('/:id/report', protect, authorize('expert'), async (req, res) => {
       console.log(`⚠️ Warning ${client.warnings}/3 issued to client ${client._id} — report on request ${request._id}`);
     }
 
+    // Email notifications on report
+    try {
+      const { sendClientPostSuspended, sendClientRestricted, sendAdminPostSuspended, sendAdminUserRestricted } = require('../utils/notificationEmailService');
+      if (reportCount >= 3 && client) {
+        sendClientPostSuspended({ to: client.email, name: client.name, postTitle: request.title, reportCount, userId: client._id }).catch(() => {});
+        sendClientRestricted({ to: client.email, name: client.name, reason: `Your post "${request.title}" was reported by ${reportCount} professionals`, warningCount: client.warnings, userId: client._id }).catch(() => {});
+        sendAdminPostSuspended({ postTitle: request.title, postId: String(request._id), clientName: client.name, clientEmail: client.email, reportCount, reports: request.reports }).catch(() => {});
+        sendAdminUserRestricted({ userName: client.name, userEmail: client.email, userRole: 'client', reason: `Post "${request.title}" suspended after ${reportCount} reports`, warningCount: client.warnings, restrictedBy: 'system' }).catch(() => {});
+      }
+    } catch(e) {}
+
     console.log(`🚩 Request ${request._id} reported by ${reporterId} — total reports: ${reportCount}`);
     res.json({ success: true, message: 'Report submitted. Thank you for keeping the platform safe.' });
-
+    
   } catch (err) {
     console.error('❌ Report request error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
