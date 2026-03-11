@@ -557,7 +557,17 @@ router.post('/users/:id/action', protect, async (req, res) => {
   user.markModified('warnings');
   user.markModified('lastWarning');
   msg = 'Warning issued' + (user.warnings >= 3 ? ' — account restricted (3 warnings)' : ' (' + user.warnings + '/3)');
+  // Email if now restricted
+  if (user.warnings >= 3) {
+    try {
+      const { sendClientRestricted, sendExpertRestricted, sendAdminUserRestricted } = require('../utils/notificationEmailService');
+      const sendFn = user.role === 'client' ? sendClientRestricted : sendExpertRestricted;
+      sendFn({ to: user.email, name: user.name, reason: reason, warningCount: user.warnings, userId: user._id }).catch(() => {});
+      sendAdminUserRestricted({ userName: user.name, userEmail: user.email, userRole: user.role, reason: reason, warningCount: user.warnings, restrictedBy: req.admin.adminId }).catch(() => {});
+    } catch(e) {}
+  }
 }
+      
     else if (action === 'unrestrict') {
   user.isRestricted = false;
   user.warnings = 0;
