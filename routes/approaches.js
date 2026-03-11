@@ -97,6 +97,23 @@ router.post('/', protect, authorize('expert'), async (req, res) => {
     console.log('  Approach ID:', approach._id);
     console.log('  Request approach count:', request.approachCount);
     
+    // Email expert + client on approach submitted
+    try {
+      const { sendExpertApproachSubmitted, sendClientExpertApproached } = require('../utils/notificationEmailService');
+      const clientUser = await User.findById(request.client).select('name email').lean();
+      sendExpertApproachSubmitted({
+        to: expert.email, name: expert.name,
+        postTitle: request.title, clientName: clientUser ? clientUser.name : 'Client',
+        creditsSpent: creditsRequired, remainingCredits: expert.credits, userId: expert._id
+      }).catch(() => {});
+      if (clientUser) {
+        sendClientExpertApproached({
+          to: clientUser.email, name: clientUser.name,
+          postTitle: request.title, expertName: expert.name, userId: clientUser._id
+        }).catch(() => {});
+      }
+    } catch(e) {}
+
     res.status(201).json({ 
       success: true, 
       approach,
