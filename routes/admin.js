@@ -1274,5 +1274,78 @@ router.post('/suspended-requests/:id/action', protect, async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+// ═══════════════════════════════════════════════════════════
+// ADD THESE ROUTES TO: routes/admin.js
+// Place them before module.exports = router;
+// ═══════════════════════════════════════════════════════════
+
+// ── GET email settings ──
+router.get('/email-settings', protect, async (req, res) => {
+  try {
+    const EmailSettings = require('../models/EmailSettings');
+    let settings = await EmailSettings.findOne({ singleton: true });
+    if (!settings) settings = await EmailSettings.create({ singleton: true });
+    res.json({ success: true, settings });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── UPDATE email settings (toggle on/off) ──
+router.put('/email-settings', protect, async (req, res) => {
+  try {
+    const EmailSettings = require('../models/EmailSettings');
+    const updates = req.body; // { client_welcome: true, expert_banned: false, ... }
+    // Remove any non-setting keys for safety
+    const allowed = [
+      'client_welcome','client_post_created','client_expert_approached',
+      'client_post_suspended','client_restricted','client_banned',
+      'expert_welcome','expert_credits_purchased','expert_credits_refunded',
+      'expert_approach_sent','expert_restricted','expert_banned',
+      'admin_post_suspended','admin_user_restricted','admin_daily_tickets'
+    ];
+    const safe = {};
+    allowed.forEach(k => { if (k in updates) safe[k] = !!updates[k]; });
+
+    const settings = await EmailSettings.findOneAndUpdate(
+      { singleton: true },
+      { $set: safe },
+      { new: true, upsert: true }
+    );
+    res.json({ success: true, settings });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── GET email logs ──
+router.get('/email-logs', protect, async (req, res) => {
+  try {
+    const EmailLog = require('../models/EmailLog');
+    const { category, type, status, limit: lim, skip: sk } = req.query;
+    const query = {};
+    if (category && category !== 'all') query.category = category;
+    if (type && type !== 'all') query.type = type;
+    if (status && status !== 'all') query.status = status;
+    const limit = parseInt(lim) || 100;
+    const skip  = parseInt(sk)  || 0;
+    const logs = await EmailLog.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
+    const total = await EmailLog.countDocuments(query);
+    res.json({ success: true, logs, total });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── TEST: send daily digest manually ──
+router.post('/email-test-digest', protect, async (req, res) => {
+  try {
+    const { sendAdminDailyTicketDigest } = require('../utils/notificationEmailService');
+    await sendAdminDailyTicketDigest();
+    res.json({ success: true, message: 'Digest sent (if tickets exist today)' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 module.exports = router;
