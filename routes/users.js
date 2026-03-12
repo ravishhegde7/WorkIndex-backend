@@ -877,4 +877,24 @@ router.put('/availability', protect, authorize('expert'), async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+// Public expert profile — no auth required
+router.get('/public/:id', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id)
+      .select('name role profilePhoto bio specialization yearsOfExperience servicesOffered location profile rating reviewCount whyChooseMe kyc emailVerified createdAt')
+      .lean();
+    if (!user || user.role !== 'expert') {
+      return res.status(404).json({ success: false, message: 'Expert not found' });
+    }
+    const ratings = await Rating.find({ expert: user._id })
+      .populate('client', 'name')
+      .sort('-createdAt')
+      .limit(3)
+      .lean();
+    res.json({ success: true, expert: user, ratings });
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+});
+
 module.exports = router;
