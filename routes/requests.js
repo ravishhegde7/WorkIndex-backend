@@ -86,15 +86,30 @@ router.get('/available', protect, authorize('expert'), async (req, res) => {
     
     const approachedRequestIds = myApproaches.map(a => a.request.toString());
 
-    const requests = await Request.find({
-  _id: { $nin: approachedRequestIds },
-  status: { $in: ['pending', 'active'] },
-  isSuspended: { $ne: true }
-})
-.sort('-createdAt')
-.limit(50)
-.populate('client', 'name')
-.lean();
+    const { service, sort, search } = req.query;
+    const query = {
+      _id: { $nin: approachedRequestIds },
+      status: { $in: ['pending', 'active'] }
+    };
+    if (service && service !== 'all') query.service = service;
+    if (search) query.$or = [
+      { title: { $regex: search, $options: 'i' } },
+      { description: { $regex: search, $options: 'i' } }
+    ];
+    const sortMap = {
+      newest:   '-createdAt',
+      oldest:   'createdAt',
+      budget_h: '-budget',
+      budget_l: 'budget',
+      credits_h: '-credits',
+    };
+    const sortStr = sortMap[sort] || '-createdAt';
+
+    const requests = await Request.find(query)
+      .sort(sortStr)
+      .limit(100)
+      .populate('client', 'name emailVerified')
+      .lean();
 
     // ✅ NEW: Get approach counts for all requests
     const requestIds = requests.map(r => r._id);
