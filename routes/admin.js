@@ -1444,6 +1444,7 @@ router.get('/revenue', protect, async (req, res) => {
     ]);
 
     // ── Expert count per service ──
+        var User = mongoose.model('User');
     var expertAgg = await User.aggregate([
       { $match: { role: 'expert' } },
       { $unwind: '$servicesOffered' },
