@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
 const Request = require('../models/Request');
 const Approach = require('../models/Approach');
+const { logAudit } = require('../utils/audit');
 
 const calculateCredits = (service, answers) => {
   // ─── BASE CREDITS PER SERVICE ───────────────────────────
@@ -249,6 +250,14 @@ router.post('/', protect, authorize('client'), async (req, res) => {
         postTitle: title, service: service, userId: req.user._id
       }).catch(() => {});
     } catch(e) {}
+
+ // ── Audit: request_created ──
+    logAudit(
+      { id: req.user.id, role: 'client', name: req.user.name },
+      'request_created',
+      { type: 'request', id: request._id, name: title },
+      { service, credits }
+    ).catch(() => {});   
     
     res.status(201).json({ 
       success: true, 
@@ -323,6 +332,14 @@ router.get('/:id', protect, async (req, res) => {
     await request.save();
     
     console.log(`✅ Request ${req.params.id} viewed (count: ${request.viewCount})`);
+
+    // ── Audit: request_viewed ──
+    logAudit(
+      { id: req.user.id, role: req.user.role, name: req.user.name },
+      'request_viewed',
+      { type: 'request', id: request._id, name: request.title },
+      {}
+    ).catch(() => {});
     
     res.json({ success: true, request });
     
@@ -359,6 +376,14 @@ router.get('/:id/approaches', protect, authorize('client'), async (req, res) => 
       .sort('-createdAt');
     
     console.log(`✅ Found ${approaches.length} approaches for request ${req.params.id}`);
+
+    // ── Audit: approach_list_viewed (client viewing who approached) ──
+    logAudit(
+      { id: req.user.id, role: 'client', name: req.user.name },
+      'approach_list_viewed',
+      { type: 'request', id: request._id, name: request.title },
+      { count: approaches.length }
+    ).catch(() => {});
     
     res.json({ 
       success: true, 
@@ -510,6 +535,14 @@ router.post('/:id/complete', protect, authorize('client'), async (req, res) => {
     } else {
       console.log('⚠️ No expertId provided in request body');
     }
+
+    // ── Audit: approach_list_viewed (client viewing who approached) ──
+    logAudit(
+      { id: req.user.id, role: 'client', name: req.user.name },
+      'approach_list_viewed',
+      { type: 'request', id: request._id, name: request.title },
+      { count: approaches.length }
+    ).catch(() => {});
     
     res.json({ 
       success: true, 
