@@ -1474,9 +1474,7 @@ router.get('/revenue', protect, async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-/ ===========================================================
 // CANNED RESPONSES — ticket quick resolve
-// ===========================================================
 router.post('/tickets/:id/canned', protect, async (req, res) => {
   try {
     var Ticket = safeModel('SupportTicket');
@@ -1583,9 +1581,7 @@ router.post('/tickets/:id/canned', protect, async (req, res) => {
   }
 });
 
-// ===========================================================
 // AUDIT LOG — full filterable log
-// ===========================================================
 router.get('/audit', protect, async (req, res) => {
   try {
     var AuditLog = safeModel('AuditLog') || safeReq('../models/AuditLog');
@@ -1619,9 +1615,7 @@ router.get('/audit', protect, async (req, res) => {
   }
 });
 
-// ===========================================================
 // AUDIT LOG — activity for a specific user (for ticket modal)
-// ===========================================================
 router.get('/audit/user/:id', protect, async (req, res) => {
   try {
     var AuditLog = safeModel('AuditLog') || safeReq('../models/AuditLog');
