@@ -1474,5 +1474,167 @@ router.get('/revenue', protect, async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+/ ===========================================================
+// CANNED RESPONSES — ticket quick resolve
+// ===========================================================
+router.post('/tickets/:id/canned', protect, async (req, res) => {
+  try {
+    var Ticket = safeModel('SupportTicket');
+    var User = mongoose.model('User');
+    var CreditTx = safeReq('../models/CreditTransaction');
+    if (!Ticket) return res.status(503).json({ success: false });
+
+    var ticket = await Ticket.findById(req.params.id).populate('user', 'name email credits');
+    if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found' });
+
+    var { cannedType, note } = req.body;
+    // cannedType: refund_approved | not_eligible | under_investigation | resolved_no_action | contact_support
+
+    var cannedMessages = {
+      refund_approved: {
+        subject: '✅ Your Refund Has Been Approved',
+        body: 'Hi {name}, your support ticket has been reviewed and your refund request has been approved. Credits have been added to your account. Thank you for your patience.'
+      },
+      not_eligible: {
+        subject: '❌ Refund Request — Not Eligible',
+        body: 'Hi {name}, after reviewing your ticket we found that this request does not meet our refund policy criteria. If you have further questions, please raise a new ticket with more details.'
+      },
+      under_investigation: {
+        subject: '🔍 Your Ticket is Under Investigation',
+        body: 'Hi {name}, we have received your ticket and our team is actively investigating the issue. We will update you within 24-48 hours. Thank you for your patience.'
+      },
+      resolved_no_action: {
+        subject: '✔ Ticket Resolved',
+        body: 'Hi {name}, your support ticket has been reviewed and resolved. No further action is required from our side. If you face any other issues, feel free to raise a new ticket.'
+      },
+      contact_support: {
+        subject: '📞 Please Contact Support',
+        body: 'Hi {name}, we need some additional information to resolve your ticket. Please email us at workindex318@gmail.com with your ticket ID and additional details.'
+      }
+    };
+
+    var canned = cannedMessages[cannedType];
+    if (!canned) return res.status(400).json({ success: false, message: 'Invalid canned type' });
+
+    var userName = ticket.user ? ticket.user.name : 'User';
+    var userEmail = ticket.user ? ticket.user.email : null;
+
+    // Handle refund_approved — add credits
+    if (cannedType === 'refund_approved' && ticket.eligibleCredits > 0) {
+      var user = await User.findById(ticket.user._id);
+      if (user) {
+        var oldBal = user.credits || 0;
+        user.credits = oldBal + ticket.eligibleCredits;
+        await user.save();
+        if (CreditTx) {
+          await CreditTx.create({
+            user: user._id, type: 'refund',
+            amount: ticket.eligibleCredits,
+            balanceBefore: oldBal, balanceAfter: user.credits,
+            description: 'Admin canned refund for ticket #' + ticket._id
+          });
+        }
+        ticket.creditsRefunded = ticket.eligibleCredits;
+      }
+    }
+
+    // Update ticket
+    var finalStatus = (cannedType === 'under_investigation') ? 'open' : 'resolved';
+    ticket.status = finalStatus;
+    ticket.decision = cannedType.toUpperCase();
+    ticket.adminNote = note || canned.body.replace('{name}', userName);
+    if (finalStatus === 'resolved') ticket.resolvedAt = new Date();
+    await ticket.save();
+
+    // Send email to user
+    if (userEmail) {
+      try {
+        var nodemailer = require('nodemailer');
+        var transporter = nodemailer.createTransport({
+          host: 'smtp-relay.brevo.com', port: 587,
+          auth: { user: process.env.BREVO_SMTP_USER, pass: process.env.BREVO_SMTP_PASS }
+        });
+        transporter.sendMail({
+          from: process.env.FROM_EMAIL,
+          to: userEmail,
+          subject: canned.subject,
+          html: '<p>' + canned.body.replace('{name}', userName) + '</p>' +
+                (note ? '<p><b>Admin note:</b> ' + note + '</p>' : '') +
+                '<p style="color:#888;font-size:12px;">Ticket ID: ' + ticket._id + '</p>'
+        }).catch(function(e) { console.error('Canned email error:', e.message); });
+      } catch(e) {}
+    }
+
+    // Audit log
+    try {
+      var { logAudit } = require('../utils/audit');
+      logAudit(
+        { id: req.admin._id, role: 'admin', name: req.admin.name },
+        'ticket_canned_response',
+        { type: 'ticket', id: ticket._id, name: ticket.subject },
+        { cannedType, userEmail }
+      ).catch(function() {});
+    } catch(e) {}
+
+    res.json({ success: true, message: 'Canned response sent and ticket updated', ticket });
+  } catch (err) {
+    console.error('Canned response error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ===========================================================
+// AUDIT LOG — full filterable log
+// ===========================================================
+router.get('/audit', protect, async (req, res) => {
+  try {
+    var AuditLog = safeModel('AuditLog') || safeReq('../models/AuditLog');
+    if (!AuditLog) return res.json({ success: true, logs: [], total: 0 });
+
+    var { action, role, search, from, to, limit: lim, skip: sk } = req.query;
+    var limit = parseInt(lim) || 100;
+    var skip  = parseInt(sk)  || 0;
+    var query = {};
+
+    if (action && action !== 'all') query.action = action;
+    if (role   && role   !== 'all') query.actorRole = role;
+    if (search) query.$or = [
+      { actorName:  { $regex: search, $options: 'i' } },
+      { targetName: { $regex: search, $options: 'i' } },
+      { action:     { $regex: search, $options: 'i' } }
+    ];
+    if (from || to) {
+      query.createdAt = {};
+      if (from) query.createdAt.$gte = new Date(from);
+      if (to)   query.createdAt.$lte = new Date(new Date(to).setHours(23,59,59,999));
+    }
+
+    var logs  = await AuditLog.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
+    var total = await AuditLog.countDocuments(query);
+
+    res.json({ success: true, logs, total });
+  } catch (err) {
+    console.error('Audit log error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ===========================================================
+// AUDIT LOG — activity for a specific user (for ticket modal)
+// ===========================================================
+router.get('/audit/user/:id', protect, async (req, res) => {
+  try {
+    var AuditLog = safeModel('AuditLog') || safeReq('../models/AuditLog');
+    if (!AuditLog) return res.json({ success: true, logs: [] });
+
+    var logs = await AuditLog.find({ actor: req.params.id })
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    res.json({ success: true, logs });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 module.exports = router;
