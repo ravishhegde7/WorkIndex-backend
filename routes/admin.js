@@ -1421,26 +1421,48 @@ router.get('/revenue', protect, async (req, res) => {
     });
     var byPeriod = Object.values(periodMap);
 
-    // ── By service category ──
-    var serviceAgg = await CreditTx.aggregate([
-      { $match: { type: 'spent', 'metadata.service': { $exists: true } } },
+    // ── Date filter for service breakdown ──
+    var serviceDateQ = {};
+    if (req.query.from || req.query.to) {
+      serviceDateQ.createdAt = {};
+      if (req.query.from) serviceDateQ.createdAt.$gte = new Date(req.query.from);
+      if (req.query.to)   serviceDateQ.createdAt.$lte = new Date(new Date(req.query.to).setHours(23,59,59,999));
+    }
+
+    // ── By service category — from Requests ──
+    var reqAgg = await Request.aggregate([
+      { $match: serviceDateQ },
       { $group: {
-        _id: '$metadata.service',
-        totalCredits: { $sum: { $abs: '$amount' } },
-        count: { $sum: 1 }
+        _id: '$service',
+        count: { $sum: 1 },
+        totalCredits: { $sum: '$creditsRequired' }
       }},
-      { $sort: { totalCredits: -1 } }
+      { $sort: { count: -1 } }
     ]);
 
-    // Fallback: get service data from Requests if CreditTx doesn't have metadata
-    var byService = serviceAgg;
-    if (!byService.length) {
-      var reqAgg = await Request.aggregate([
-        { $group: { _id: '$service', count: { $sum: 1 }, totalCredits: { $sum: '$creditsRequired' } } },
-        { $sort: { totalCredits: -1 } }
-      ]);
-      byService = reqAgg;
-    }
+    // ── Expert count per service ──
+    var expertAgg = await User.aggregate([
+      { $match: { role: 'expert' } },
+      { $unwind: '$servicesOffered' },
+      { $group: { _id: '$servicesOffered', expertCount: { $sum: 1 } } }
+    ]);
+    var expertCountMap = {};
+    expertAgg.forEach(function(e) {
+      if (e._id) expertCountMap[e._id.toLowerCase()] = e.expertCount;
+    });
+
+    // Total requests for share %
+    var totalRequests = reqAgg.reduce(function(sum, r) { return sum + r.count; }, 0) || 1;
+
+    var byService = reqAgg.map(function(r) {
+      return {
+        _id: r._id,
+        count: r.count,
+        totalCredits: r.totalCredits || 0,
+        expertCount: expertCountMap[(r._id||'').toLowerCase()] || 0,
+        share: Math.round((r.count / totalRequests) * 100)
+      };
+    });
 
     res.json({ success: true, summary, byPeriod, byService });
   } catch (err) {
