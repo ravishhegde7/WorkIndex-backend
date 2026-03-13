@@ -4,6 +4,7 @@ const { protect, authorize } = require('../middleware/auth');
 const Approach = require('../models/Approach');
 const Request = require('../models/Request');
 const User = require('../models/User');
+const { logAudit } = require('../utils/audit');
 
 // ─── CREATE NEW APPROACH (EXPERT ONLY) ───
 router.post('/', protect, authorize('expert'), async (req, res) => {
@@ -114,6 +115,14 @@ router.post('/', protect, authorize('expert'), async (req, res) => {
       }
     } catch(e) {}
 
+// ── Audit: approach_submitted ──
+    logAudit(
+      { id: req.user.id, role: 'expert', name: expert.name },
+      'approach_submitted',
+      { type: 'request', id: requestId, name: request.title },
+      { creditsSpent: creditsRequired, remainingCredits: expert.credits }
+    ).catch(() => {});
+    
     res.status(201).json({ 
       success: true, 
       approach,
