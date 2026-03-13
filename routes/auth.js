@@ -245,8 +245,18 @@ router.post('/login', [
     user.lastLogin = Date.now();
     await user.save();
 
-    const token = generateToken(user._id);
+    // ── Audit: login ──
+    try {
+      const { logAudit } = require('../utils/audit');
+      logAudit(
+        { id: user._id, role: user.role, name: user.name },
+        'login',
+        { type: 'user', id: user._id, name: user.name },
+        { ip: req.ip }
+      ).catch(() => {});
+    } catch(e) {}
 
+    const token = generateToken(user._id);
     res.json({
       success: true,
       token,
