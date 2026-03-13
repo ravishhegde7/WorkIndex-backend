@@ -197,6 +197,17 @@ router.get('/:id', protect, async (req, res) => {
     }
     
     console.log(`✅ Approach ${req.params.id} retrieved`);
+
+
+    // ── Audit: approach_viewed (only log when client views it) ──
+    if (req.user.role === 'client') {
+      logAudit(
+        { id: req.user.id, role: 'client', name: req.user.name },
+        'approach_viewed',
+        { type: 'approach', id: approach._id, name: approach.request ? approach.request.title : '' },
+        { expertId: approach.expert ? approach.expert._id : null, expertName: approach.expert ? approach.expert.name : '' }
+      ).catch(() => {});
+    }
     
     res.json({ success: true, approach });
     
@@ -248,6 +259,16 @@ router.put('/:id/status', protect, authorize('client'), async (req, res) => {
     await approach.save();
     
     console.log(`✅ Approach ${req.params.id} status updated to ${status}`);
+
+// ── Audit: approach_accepted / approach_rejected ──
+    if (status === 'accepted' || status === 'rejected') {
+      logAudit(
+        { id: req.user.id, role: 'client', name: req.user.name },
+        status === 'accepted' ? 'approach_accepted' : 'approach_rejected',
+        { type: 'approach', id: approach._id, name: '' },
+        { expertId: approach.expert ? approach.expert.toString() : null }
+      ).catch(() => {});
+    }
     
     res.json({ success: true, approach });
     
