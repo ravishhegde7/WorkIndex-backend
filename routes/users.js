@@ -877,6 +877,71 @@ router.put('/availability', protect, authorize('expert'), async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+// ─── FOLLOW UP ON TICKET (48hr rule) ───
+router.post('/tickets/:id/followup', protect, async (req, res) => {
+  try {
+    var mongoose = require('mongoose');
+    var SupportTicket = mongoose.models['SupportTicket'] || require('../models/SupportTicket');
+    var { logAudit } = require('../utils/audit');
+
+    var ticket = await SupportTicket.findOne({ _id: req.params.id, user: req.user._id });
+    if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found' });
+    if (ticket.status !== 'open') return res.status(400).json({ success: false, message: 'Ticket is already resolved' });
+
+    // Check 48hrs have passed since creation
+    var hoursSinceCreated = (Date.now() - new Date(ticket.createdAt).getTime()) / (1000 * 60 * 60);
+    if (hoursSinceCreated < 48) {
+      var hoursLeft = Math.ceil(48 - hoursSinceCreated);
+      return res.status(400).json({ success: false, message: `Follow up available in ${hoursLeft} hour(s)` });
+    }
+
+    // Check 24hrs since last follow up
+    if (ticket.lastFollowUp) {
+      var hoursSinceFollowUp = (Date.now() - new Date(ticket.lastFollowUp).getTime()) / (1000 * 60 * 60);
+      if (hoursSinceFollowUp < 24) {
+        var hoursLeft2 = Math.ceil(24 - hoursSinceFollowUp);
+        return res.status(400).json({ success: false, message: `Next follow up available in ${hoursLeft2} hour(s)` });
+      }
+    }
+
+    ticket.lastFollowUp = new Date();
+    ticket.followUpCount = (ticket.followUpCount || 0) + 1;
+    if (ticket.status === 'open') ticket.status = 'escalated';
+    await ticket.save();
+
+    // Email admin
+    try {
+      var nodemailer = require('nodemailer');
+      var transporter = nodemailer.createTransport({
+        host: 'smtp-relay.brevo.com', port: 587,
+        auth: { user: process.env.BREVO_SMTP_USER, pass: process.env.BREVO_SMTP_PASS }
+      });
+      transporter.sendMail({
+        from: process.env.FROM_EMAIL,
+        to: process.env.ADMIN_EMAIL || 'workindex318@gmail.com',
+        subject: `⚠️ Ticket Follow Up — ${ticket.subject}`,
+        html: `<p>User <b>${req.user.name}</b> (${req.user.email}) has followed up on ticket <b>#${ticket._id}</b>.</p>
+               <p>Subject: ${ticket.subject}</p>
+               <p>Follow up count: ${ticket.followUpCount}</p>
+               <p>Ticket is now <b>Escalated</b>.</p>`
+      }).catch(() => {});
+    } catch(e) {}
+
+    // Audit log
+    logAudit(
+      { id: req.user._id, role: req.user.role, name: req.user.name },
+      'follow_up_sent',
+      { type: 'ticket', id: ticket._id, name: ticket.subject },
+      { followUpCount: ticket.followUpCount }
+    ).catch(() => {});
+
+    res.json({ success: true, message: 'Follow up sent. Admin has been notified.' });
+  } catch (err) {
+    console.error('Follow up error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // Public expert profile — no auth required
 router.get('/public/:id', async (req, res) => {
   try {
