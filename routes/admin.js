@@ -1423,10 +1423,13 @@ router.get('/revenue', protect, async (req, res) => {
 
     // ── Date filter for service breakdown ──
     var serviceDateQ = {};
-    if (req.query.from || req.query.to) {
-      serviceDateQ.createdAt = {};
-      if (req.query.from) serviceDateQ.createdAt.$gte = new Date(req.query.from);
-      if (req.query.to)   serviceDateQ.createdAt.$lte = new Date(new Date(req.query.to).setHours(23,59,59,999));
+    var svcPeriod = req.query.svcPeriod || 'all';
+    if (svcPeriod !== 'all') {
+      var svcFrom = new Date();
+      if (svcPeriod === 'day')   svcFrom.setDate(svcFrom.getDate() - 1);
+      if (svcPeriod === 'week')  svcFrom.setDate(svcFrom.getDate() - 7);
+      if (svcPeriod === 'month') svcFrom.setMonth(svcFrom.getMonth() - 1);
+      serviceDateQ.createdAt = { $gte: svcFrom };
     }
 
     // ── By service category — from Requests ──
