@@ -71,7 +71,7 @@ require('./models/Notification');
 require('./models/SupportTicket');
 require('./models/EmailSettings');
 require('./models/EmailLog');
-
+require('./models/AuditLog');
 
 // Register routes
 app.use('/api/auth', authRoutes);
