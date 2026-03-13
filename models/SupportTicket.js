@@ -7,7 +7,7 @@ const supportTicketSchema = new mongoose.Schema({
   subject:       { type: String },
   description:   { type: String },
   priority:      { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
-  status:        { type: String, enum: ['open', 'pending_review', 'resolved', 'closed'], default: 'open' },
+  status:        { type: String, enum: ['open', 'pending_review', 'resolved', 'closed', 'escalated'], default: 'open' },
   decision:      { type: String },
   adminNote:     { type: String },
   eligibleCredits:  { type: Number, default: 0 },
@@ -15,7 +15,10 @@ const supportTicketSchema = new mongoose.Schema({
   createdByAdmin:   { type: Boolean, default: false },
   createdBy:        { type: String },
   resolvedAt:       { type: Date },
-  transactionBreakdown: [{ type: mongoose.Schema.Types.Mixed }]
+  transactionBreakdown: [{ type: mongoose.Schema.Types.Mixed }],
+  followUpCount:    { type: Number, default: 0 },
+  lastFollowUp:     { type: Date, default: null },
+  escalatedAt:      { type: Date, default: null }
 }, { timestamps: true });
 
 module.exports = mongoose.models.SupportTicket || mongoose.model('SupportTicket', supportTicketSchema);
