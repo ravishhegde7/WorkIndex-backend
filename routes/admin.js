@@ -1357,5 +1357,96 @@ router.post('/email-test-digest', protect, async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+// ─── REVENUE DASHBOARD ───────────────────────────────────────────────────────
+router.get('/revenue', protect, async (req, res) => {
+  try {
+    var CreditTx = safeReq('../models/CreditTransaction');
+    var Request  = mongoose.model('Request');
+    if (!CreditTx) return res.json({ success: true, summary: {}, byPeriod: [], byService: [] });
+
+    var { period = 'month' } = req.query; // day | week | month
+
+    // ── Date grouping format ──
+    var groupId;
+    if (period === 'day') {
+      groupId = { y: { $year:'$createdAt' }, m: { $month:'$createdAt' }, d: { $dayOfMonth:'$createdAt' } };
+    } else if (period === 'week') {
+      groupId = { y: { $year:'$createdAt' }, w: { $week:'$createdAt' } };
+    } else {
+      groupId = { y: { $year:'$createdAt' }, m: { $month:'$createdAt' } };
+    }
+
+    // ── Overall summary ──
+    var summaryAgg = await CreditTx.aggregate([
+      { $group: {
+        _id: '$type',
+        totalCredits: { $sum: '$amount' },
+        totalAmount:  { $sum: '$purchaseDetails.amountPaid' },
+        count: { $sum: 1 }
+      }}
+    ]);
+    var summary = { purchased: 0, spent: 0, refunded: 0, bonus: 0, amountReceived: 0, txCount: 0 };
+    summaryAgg.forEach(function(a) {
+      if (a._id === 'purchase') { summary.purchased = a.totalCredits; summary.amountReceived = a.totalAmount || 0; summary.txCount = a.count; }
+      if (a._id === 'spent')    summary.spent    = Math.abs(a.totalCredits);
+      if (a._id === 'refund')   summary.refunded = a.totalCredits;
+      if (a._id === 'bonus')    summary.bonus    = a.totalCredits;
+    });
+
+    // ── By period (time series) ──
+    var periodAgg = await CreditTx.aggregate([
+      { $group: {
+        _id: { period: groupId, type: '$type' },
+        totalCredits: { $sum: '$amount' },
+        totalAmount:  { $sum: '$purchaseDetails.amountPaid' },
+        count: { $sum: 1 }
+      }},
+      { $sort: { '_id.period.y': 1, '_id.period.m': 1, '_id.period.d': 1, '_id.period.w': 1 } }
+    ]);
+
+    // Reshape into [{label, purchased, spent, refunded, amountReceived}]
+    var periodMap = {};
+    periodAgg.forEach(function(a) {
+      var p = a._id.period;
+      var label;
+      if (period === 'day')   label = p.y + '-' + String(p.m).padStart(2,'0') + '-' + String(p.d).padStart(2,'0');
+      else if (period === 'week') label = p.y + '-W' + String(p.w).padStart(2,'0');
+      else label = p.y + '-' + String(p.m).padStart(2,'0');
+
+      if (!periodMap[label]) periodMap[label] = { label, purchased: 0, spent: 0, refunded: 0, amountReceived: 0 };
+      var t = a._id.type;
+      if (t === 'purchase') { periodMap[label].purchased += a.totalCredits; periodMap[label].amountReceived += (a.totalAmount || 0); }
+      if (t === 'spent')    periodMap[label].spent    += Math.abs(a.totalCredits);
+      if (t === 'refund')   periodMap[label].refunded += a.totalCredits;
+    });
+    var byPeriod = Object.values(periodMap);
+
+    // ── By service category ──
+    var serviceAgg = await CreditTx.aggregate([
+      { $match: { type: 'spent', 'metadata.service': { $exists: true } } },
+      { $group: {
+        _id: '$metadata.service',
+        totalCredits: { $sum: { $abs: '$amount' } },
+        count: { $sum: 1 }
+      }},
+      { $sort: { totalCredits: -1 } }
+    ]);
+
+    // Fallback: get service data from Requests if CreditTx doesn't have metadata
+    var byService = serviceAgg;
+    if (!byService.length) {
+      var reqAgg = await Request.aggregate([
+        { $group: { _id: '$service', count: { $sum: 1 }, totalCredits: { $sum: '$creditsRequired' } } },
+        { $sort: { totalCredits: -1 } }
+      ]);
+      byService = reqAgg;
+    }
+
+    res.json({ success: true, summary, byPeriod, byService });
+  } catch (err) {
+    console.error('Revenue error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 module.exports = router;
