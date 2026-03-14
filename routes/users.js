@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const { protect, authorize } = require('../middleware/auth');
 const User = require('../models/User');
 const Rating = require('../models/Rating');
+const { logAudit } = require('../utils/audit');
 
 // ✅ FIXED: Use memory storage instead of disk storage
 const storage = multer.memoryStorage();
