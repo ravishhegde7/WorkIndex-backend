@@ -116,11 +116,12 @@ router.post('/', protect, authorize('expert'), async (req, res) => {
     } catch(e) {}
 
 // ── Audit: approach_submitted ──
+    const clientForAudit = await User.findById(request.client).select('name').lean();
     logAudit(
       { id: req.user.id, role: 'expert', name: expert.name },
       'approach_submitted',
-      { type: 'request', id: requestId, name: request.title },
-      { creditsSpent: creditsRequired, remainingCredits: expert.credits }
+      { type: 'request', id: requestId, name: clientForAudit ? clientForAudit.name : 'Client' },
+      { creditsSpent: creditsRequired, remainingCredits: expert.credits, requestTitle: request.title }
     ).catch(() => {});
     
     res.status(201).json({ 
