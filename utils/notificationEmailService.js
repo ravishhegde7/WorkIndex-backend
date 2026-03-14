@@ -550,6 +550,40 @@ async function sendAdminDailyTicketDigest() {
     console.error('❌ Daily ticket digest error:', err.message);
   }
 }
+// 16. Admin: Ticket Escalated
+async function sendAdminTicketEscalated({ userName, userEmail, ticketId, subject, followUpCount }) {
+  const type = 'admin_ticket_escalated';
+  if (!await isEnabled(type)) return;
+
+  const html = layout(`Ticket Escalated — Follow Up #${followUpCount} ⚠️`, `
+    ${dangerBox(`User <strong>${userName}</strong> has sent follow-up #${followUpCount} on their support ticket. This ticket is now <strong>escalated</strong> and requires prompt attention.`)}
+    ${infoBox(`<strong>Ticket Details:</strong><br>
+      🆔 <strong>Ticket ID:</strong> #${ticketId.slice(-6).toUpperCase()}<br>
+      👤 <strong>User:</strong> ${userName}<br>
+      📧 <strong>Email:</strong> ${userEmail}<br>
+      📋 <strong>Subject:</strong> ${subject}<br>
+      🔔 <strong>Follow Up Count:</strong> ${followUpCount}`)}
+    ${para(`Please review and respond to this ticket as soon as possible to avoid further escalation.`)}
+    ${ctaButton('Open Ticket in Admin Panel', 'https://workindex-frontend.vercel.app/admin.html')}
+  `);
+
+  const result = await sendViaBrevo({
+    to: ADMIN_EMAIL,
+    toName: ADMIN_NAME,
+    subject: `⚠️ Escalated Ticket #${ticketId.slice(-6).toUpperCase()} — ${subject} (Follow Up #${followUpCount})`,
+    htmlContent: html
+  });
+  await logEmail({
+    to: ADMIN_EMAIL,
+    toName: ADMIN_NAME,
+    subject: `Ticket escalated: ${subject}`,
+    type,
+    category: 'admin',
+    reason: `User ${userName} sent follow-up #${followUpCount}`,
+    status: result.success ? 'sent' : 'failed',
+    error: result.error || ''
+  });
+}
 
 module.exports = {
   sendClientWelcome,
@@ -566,5 +600,7 @@ module.exports = {
   sendExpertBanned,
   sendAdminPostSuspended,
   sendAdminUserRestricted,
-  sendAdminDailyTicketDigest
+  sendAdminDailyTicketDigest,
+    sendAdminTicketEscalated
+
 };
