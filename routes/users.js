@@ -931,11 +931,11 @@ router.post('/tickets/:id/followup', protect, async (req, res) => {
     // Audit log
     logAudit(
       { id: req.user._id, role: req.user.role, name: req.user.name },
-      'follow_up_sent',
+      'ticket_followup',
       { type: 'ticket', id: ticket._id, name: ticket.subject },
       { followUpCount: ticket.followUpCount }
     ).catch(() => {});
-
+    
     res.json({ success: true, message: 'Follow up sent. Admin has been notified.' });
   } catch (err) {
     console.error('Follow up error:', err);
