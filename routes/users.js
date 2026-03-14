@@ -904,8 +904,8 @@ router.post('/tickets/:id/followup', protect, async (req, res) => {
 
     var ticket = await SupportTicket.findOne({ _id: req.params.id, user: req.user._id });
     if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found' });
-    if (ticket.status !== 'open') return res.status(400).json({ success: false, message: 'Ticket is already resolved' });
-
+    if (['resolved', 'closed'].includes(ticket.status)) return res.status(400).json({ success: false, message: 'Ticket is already resolved' });
+    
     // Check 48hrs have passed since creation
     var hoursSinceCreated = (Date.now() - new Date(ticket.createdAt).getTime()) / (1000 * 60 * 60);
     if (hoursSinceCreated < 48) {
