@@ -536,12 +536,22 @@ router.post('/:id/complete', protect, authorize('client'), async (req, res) => {
       console.log('⚠️ No expertId provided in request body');
     }
 
-    // ── Audit: approach_list_viewed (client viewing who approached) ──
+    // ── Audit: service_completed (expert side) ──
+    if (expertId) {
+      logAudit(
+        { id: expertId, role: 'expert', name: 'Expert' },
+        'service_completed',
+        { type: 'request', id: request._id, name: request.title },
+        { clientId: req.user.id }
+      ).catch(() => {});
+    }
+
+    // ── Audit: service_received (client side) ──
     logAudit(
       { id: req.user.id, role: 'client', name: req.user.name },
-      'approach_list_viewed',
+      'service_received',
       { type: 'request', id: request._id, name: request.title },
-      { count: approaches.length }
+      { expertId: expertId || null }
     ).catch(() => {});
     
     res.json({ 
