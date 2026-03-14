@@ -945,6 +945,22 @@ router.post('/tickets/:id/followup', protect, async (req, res) => {
 // Public expert profile — no auth required
 router.get('/public/:id', async (req, res) => {
   try {
+    const jwt = require('jsonwebtoken');
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
+      const viewer = await User.findById(decoded.id).select('name role').lean();
+      if (viewer) {
+        logAudit(
+          { id: viewer._id, role: viewer.role, name: viewer.name },
+          'expert_profile_viewed',
+          { type: 'user', id: req.params.id, name: '' },
+          {}
+        ).catch(() => {});
+      }
+    }
+  } catch(e) {}
+  try {
     const user = await User.findById(req.params.id)
       .select('name role profilePhoto bio specialization yearsOfExperience servicesOffered location profile rating reviewCount whyChooseMe kyc emailVerified createdAt')
       .lean();
