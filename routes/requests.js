@@ -536,23 +536,34 @@ router.post('/:id/complete', protect, authorize('client'), async (req, res) => {
       console.log('⚠️ No expertId provided in request body');
     }
 
-    // ── Audit: service_completed (expert side) ──
+    // ── Audit: service_completed + service_received ──
     if (expertId) {
+      const expertUser = await User.findById(expertId).select('name').lean();
+      const expertName = expertUser ? expertUser.name : 'Expert';
+
+      // service_completed — expert side, target = client name
       logAudit(
-        { id: expertId, role: 'expert', name: 'Expert' },
+        { id: expertId, role: 'expert', name: expertName },
         'service_completed',
+        { type: 'request', id: request._id, name: req.user.name },
+        { requestTitle: request.title, clientId: req.user.id }
+      ).catch(() => {});
+
+      // service_received — client side, target = expert name
+      logAudit(
+        { id: req.user.id, role: 'client', name: req.user.name },
+        'service_received',
+        { type: 'request', id: request._id, name: expertName },
+        { requestTitle: request.title, expertId }
+      ).catch(() => {});
+    } else {
+      logAudit(
+        { id: req.user.id, role: 'client', name: req.user.name },
+        'service_received',
         { type: 'request', id: request._id, name: request.title },
-        { clientId: req.user.id }
+        { expertId: null }
       ).catch(() => {});
     }
-
-    // ── Audit: service_received (client side) ──
-    logAudit(
-      { id: req.user.id, role: 'client', name: req.user.name },
-      'service_received',
-      { type: 'request', id: request._id, name: request.title },
-      { expertId: expertId || null }
-    ).catch(() => {});
     
     res.json({ 
       success: true, 
