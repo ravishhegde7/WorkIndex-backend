@@ -929,22 +929,17 @@ router.post('/tickets/:id/followup', protect, async (req, res) => {
 
     // Email admin
     try {
-      var nodemailer = require('nodemailer');
-      var transporter = nodemailer.createTransport({
-        host: 'smtp-relay.brevo.com', port: 587,
-        auth: { user: process.env.BREVO_SMTP_USER, pass: process.env.BREVO_SMTP_PASS }
+      const { sendAdminTicketEscalated } = require('../utils/notificationEmailService');
+      await sendAdminTicketEscalated({
+        userName: req.user.name,
+        userEmail: req.user.email,
+        ticketId: String(ticket._id),
+        subject: ticket.subject,
+        followUpCount: ticket.followUpCount
       });
-      transporter.sendMail({
-        from: process.env.FROM_EMAIL,
-        to: process.env.ADMIN_EMAIL || 'workindex318@gmail.com',
-        subject: `⚠️ Ticket Follow Up — ${ticket.subject}`,
-        html: `<p>User <b>${req.user.name}</b> (${req.user.email}) has followed up on ticket <b>#${ticket._id}</b>.</p>
-               <p>Subject: ${ticket.subject}</p>
-               <p>Follow up count: ${ticket.followUpCount}</p>
-               <p>Ticket is now <b>Escalated</b>.</p>`
-      }).catch(() => {});
-    } catch(e) {}
-
+    } catch(e) {
+      console.error('Escalation email error:', e.message);
+    }
     // Audit log
     logAudit(
       { id: req.user._id, role: req.user.role, name: req.user.name },
