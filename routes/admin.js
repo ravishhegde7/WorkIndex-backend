@@ -1631,4 +1631,19 @@ router.get('/audit/user/:id', protect, async (req, res) => {
   }
 });
 
+// Audit logs where this user is the TARGET (someone did something to them)
+router.get('/audit/target/:id', protect, async (req, res) => {
+  try {
+    var AuditLog = safeModel('AuditLog') || safeReq('../models/AuditLog');
+    if (!AuditLog) return res.json({ success: true, logs: [] });
+
+    var logs = await AuditLog.find({ targetId: req.params.id })
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    res.json({ success: true, logs });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 module.exports = router;
