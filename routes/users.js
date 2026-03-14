@@ -687,6 +687,14 @@ router.post('/:id/interest', protect, authorize('client'), async (req, res) => {
         console.log('⚠️  Notification model not found — notification skipped');
       }
 
+      // ── Audit: client_hired_expert ──
+      logAudit(
+        { id: clientId, role: 'client', name: req.user.name },
+        'client_hired_expert',
+        { type: 'user', id: expertId, name: expert.name },
+        {}
+      ).catch(() => {});
+
       return res.json({ success: true, message: 'Expert notified of your interest' });
     }
 
@@ -804,7 +812,15 @@ router.post('/unlock-interest/:notifId', protect, authorize('expert'), async (re
 
     console.log(`✅ Expert ${expert._id} unlocked interest. Credits: ${balanceBefore} → ${expert.credits}`);
     console.log(`✅ Saved unlocked data:`, newData);
-
+ 
+    // ── Audit: expert_accepted_hire ──
+    logAudit(
+      { id: expert._id, role: 'expert', name: expert.name },
+      'expert_accepted_hire',
+      { type: 'user', id: clientId, name: clientName },
+      { creditsSpent: UNLOCK_COST }
+    ).catch(() => {});
+    
     res.json({
       success: true,
       creditsSpent: UNLOCK_COST,
