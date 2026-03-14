@@ -263,10 +263,11 @@ router.put('/:id/status', protect, authorize('client'), async (req, res) => {
 
 // ── Audit: approach_accepted / approach_rejected ──
     if (status === 'accepted' || status === 'rejected') {
+      const expertForAudit = await User.findById(approach.expert).select('name').lean();
       logAudit(
         { id: req.user.id, role: 'client', name: req.user.name },
         status === 'accepted' ? 'approach_accepted' : 'approach_rejected',
-        { type: 'approach', id: approach._id, name: '' },
+        { type: 'approach', id: approach._id, name: expertForAudit ? expertForAudit.name : 'Expert' },
         { expertId: approach.expert ? approach.expert.toString() : null }
       ).catch(() => {});
     }
