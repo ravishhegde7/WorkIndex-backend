@@ -494,6 +494,23 @@ if (minRating) {
 
 // Get single expert public profile
 router.get('/expert/:id', async (req, res) => {
+  // Optional auth — log audit if viewer is logged in
+  try {
+    const jwt = require('jsonwebtoken');
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
+      const viewer = await User.findById(decoded.id).select('name role').lean();
+      if (viewer) {
+        logAudit(
+          { id: viewer._id, role: viewer.role, name: viewer.name },
+          'expert_profile_viewed',
+          { type: 'user', id: req.params.id, name: '' },
+          {}
+        ).catch(() => {});
+      }
+    }
+  } catch(e) {}
   try {
     // ✅ Filter by role directly in DB query instead of checking after fetch
     const expert = await User.findOne({ 
