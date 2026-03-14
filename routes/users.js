@@ -502,10 +502,12 @@ router.get('/expert/:id', async (req, res) => {
       const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
       const viewer = await User.findById(decoded.id).select('name role').lean();
       if (viewer) {
+        // Get expert name for target
+        const expertUser = await User.findById(req.params.id).select('name').lean();
         logAudit(
           { id: viewer._id, role: viewer.role, name: viewer.name },
           'expert_profile_viewed',
-          { type: 'user', id: req.params.id, name: '' },
+          { type: 'user', id: req.params.id, name: expertUser ? expertUser.name : '' },
           {}
         ).catch(() => {});
       }
