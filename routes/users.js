@@ -567,75 +567,43 @@ router.post('/:id/block', protect, authorize('client'), async (req, res) => {
     if (report) {
       const expert = await User.findById(expertId);
       if (expert) {
-        expert.reportCount = (expert.reportCount || 0) + 1;
-        expert.reports = expert.reports || [];
-        expert.reports.push({
-          reportedBy: req.user._id,
-          reason: reason || 'Reported by client',
-          date: new Date()
-        });
-
-        expert.warnings = (expert.warnings || 0) + 1;
-        expert.lastWarning = {
-          reason: `A client reported you: ${reason || 'Inappropriate behavior or platform violation'}`,
-          date: new Date(),
-          by: 'system'
-        };
-        expert.markModified('warnings');
-        expert.markModified('lastWarning');
-        expert.markModified('reports');
-
-        if (expert.warnings >= 3) {
-          expert.isRestricted = true;
-          expert.markModified('isRestricted');
-          console.log(`🚫 Expert ${expertId} auto-restricted after ${expert.warnings} warnings`);
-        }
-
-        await expert.save();
-        console.log(`⚠️ Warning ${expert.warnings}/3 issued to expert ${expertId} — reported by client ${req.user._id}`);
-      }
-    }
-
-    if (report) {
-      const expert = await User.findById(expertId);
-      if (expert) {
-        expert.reportCount = (expert.reportCount || 0) + 1;
-        expert.reports = expert.reports || [];
-        expert.reports.push({
-          reportedBy: req.user._id,
-          reason: reason || 'Reported by client',
-          date: new Date()
-        });
-        expert.warnings = (expert.warnings || 0) + 1;
-        expert.lastWarning = {
-          reason: `A client reported you: ${reason || 'Inappropriate behavior or platform violation'}`,
-          date: new Date(),
-          by: 'system'
-        };
-        expert.markModified('warnings');
-        expert.markModified('lastWarning');
-        expert.markModified('reports');
-
-        if (expert.warnings >= 3) {
-          expert.isRestricted = true;
-          expert.markModified('isRestricted');
-          console.log(`🚫 Expert ${expertId} auto-restricted after ${expert.warnings} warnings`);
-        }
-
-        await expert.save();
-        console.log(`⚠️ Warning ${expert.warnings}/3 issued to expert ${expertId} — reported by client ${req.user._id}`);
-
-        // Email notifications — now expert is in scope
-        if (expert.isRestricted) {
-          try {
-            const { sendExpertRestricted, sendAdminUserRestricted } = require('../utils/notificationEmailService');
-            sendExpertRestricted({ to: expert.email, name: expert.name, reason: reason || 'Multiple client reports', warningCount: expert.warnings, userId: expert._id }).catch(() => {});
-            sendAdminUserRestricted({ userName: expert.name, userEmail: expert.email, userRole: 'expert', reason: reason || 'Auto-restricted after 3 client reports', warningCount: expert.warnings, restrictedBy: 'system' }).catch(() => {});
-          } catch(e) {}
+        const alreadyReported = (expert.reports || []).some(
+          r => r.reportedBy && r.reportedBy.toString() === req.user._id.toString()
+        );
+        if (!alreadyReported) {
+          expert.reportCount = (expert.reportCount || 0) + 1;
+          expert.reports = expert.reports || [];
+          expert.reports.push({
+            reportedBy: req.user._id,
+            reason: reason || 'Reported by client',
+            date: new Date()
+          });
+          expert.warnings = (expert.warnings || 0) + 1;
+          expert.lastWarning = {
+            reason: `A client reported you: ${reason || 'Inappropriate behavior or platform violation'}`,
+            date: new Date(),
+            by: 'system'
+          };
+          expert.markModified('warnings');
+          expert.markModified('lastWarning');
+          expert.markModified('reports');
+          if (expert.warnings >= 3) {
+            expert.isRestricted = true;
+            expert.markModified('isRestricted');
+            console.log(`🚫 Expert ${expertId} auto-restricted after ${expert.warnings} warnings`);
+          }
+          await expert.save();
+          console.log(`⚠️ Warning ${expert.warnings}/3 issued to expert ${expertId} — reported by client ${req.user._id}`);
+          if (expert.isRestricted) {
+            try {
+              const { sendExpertRestricted, sendAdminUserRestricted } = require('../utils/notificationEmailService');
+              sendExpertRestricted({ to: expert.email, name: expert.name, reason: reason || 'Multiple client reports', warningCount: expert.warnings, userId: expert._id }).catch(() => {});
+              sendAdminUserRestricted({ userName: expert.name, userEmail: expert.email, userRole: 'expert', reason: reason || 'Auto-restricted after 3 client reports', warningCount: expert.warnings, restrictedBy: 'system' }).catch(() => {});
+            } catch(e) {}
+          }
         }
       }
     }
-
     console.log(`✅ User ${req.user._id} blocked expert ${expertId}. Report: ${report}`);
     res.json({
       success: true,
