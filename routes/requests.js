@@ -538,6 +538,7 @@ router.post('/:id/complete', protect, authorize('client'), async (req, res) => {
 
     // ── Audit: service_completed + service_received ──
     if (expertId) {
+            const User = require('../models/User');
       const expertUser = await User.findById(expertId).select('name').lean();
       const expertName = expertUser ? expertUser.name : 'Expert';
 
