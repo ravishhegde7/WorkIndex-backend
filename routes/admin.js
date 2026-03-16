@@ -1646,4 +1646,35 @@ router.get('/audit/target/:id', protect, async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+
+router.post('/danger/clear-category', protect, async (req, res) => {
+  try {
+    const { category } = req.body;
+    const Request = mongoose.model('Request');
+    const User = mongoose.model('User');
+    const Approach = safeReq('../models/Approach');
+    const CreditTx = safeReq('../models/CreditTransaction');
+    const Rating = safeModel('Rating');
+    const Chat = safeModel('Chat');
+    const Notification = safeModel('Notification');
+    const Ticket = safeModel('SupportTicket');
+
+    var result = 0;
+    if (category === 'approaches'    && Approach)     { result = (await Approach.deleteMany({})).deletedCount; }
+    else if (category === 'posts')                    { result = (await Request.deleteMany({})).deletedCount; }
+    else if (category === 'experts')                  { result = (await User.deleteMany({ role: 'expert' })).deletedCount; }
+    else if (category === 'clients')                  { result = (await User.deleteMany({ role: 'client' })).deletedCount; }
+    else if (category === 'ratings'    && Rating)     { result = (await Rating.deleteMany({})).deletedCount; }
+    else if (category === 'chats'      && Chat)       { result = (await Chat.deleteMany({})).deletedCount; }
+    else if (category === 'tickets'    && Ticket)     { result = (await Ticket.deleteMany({})).deletedCount; }
+    else if (category === 'notifications' && Notification) { result = (await Notification.deleteMany({})).deletedCount; }
+    else if (category === 'credits'    && CreditTx)   { result = (await CreditTx.deleteMany({})).deletedCount; }
+    else return res.status(400).json({ success: false, message: 'Unknown category or model unavailable: ' + category });
+
+    res.json({ success: true, message: 'Deleted ' + result + ' ' + category + ' records.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;
