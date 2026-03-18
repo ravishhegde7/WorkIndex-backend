@@ -22,10 +22,10 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'https://workindex.co.in';
 
 // Credit packs — must match credits.js
 const CREDIT_PACKS = [
-  { id: 'starter', credits: 20,  price: 600  },
-  { id: 'basic',   credits: 50,  price: 1500 },
-  { id: 'popular', credits: 100, price: 2700 },
-  { id: 'pro',     credits: 200, price: 4800 },
+  { id: 'starter', credits: 15,  price: 100  },
+  { id: 'basic',   credits: 40,  price: 250  },
+  { id: 'popular', credits: 180, price: 1000 },
+  { id: 'pro',     credits: 500, price: 2500 },
 ];
 
 // ═══════════════════════════════════════════════════════════
