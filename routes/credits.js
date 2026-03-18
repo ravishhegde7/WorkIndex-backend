@@ -8,34 +8,34 @@ const Transaction = require('../models/Transaction');
 const CREDIT_PACKS = [
   { 
     id: 'starter',
-    credits: 20, 
-    price: 600,
-    pricePerCredit: 30,
+    credits: 15, 
+    price: 100,
+    pricePerCredit: 6.67,
     savings: 0,
     popular: false
   },
   { 
     id: 'basic',
-    credits: 50, 
-    price: 1500,
-    pricePerCredit: 30,
-    savings: 0,
+    credits: 40, 
+    price: 250,
+    pricePerCredit: 6.25,
+    savings: 6,
     popular: false
   },
   { 
     id: 'popular',
-    credits: 100, 
-    price: 2700,
-    pricePerCredit: 27,
-    savings: 10,
+    credits: 180, 
+    price: 1000,
+    pricePerCredit: 5.56,
+    savings: 17,
     popular: true
   },
   { 
     id: 'pro',
-    credits: 200, 
-    price: 4800,
-    pricePerCredit: 24,
-    savings: 20,
+    credits: 500, 
+    price: 2500,
+    pricePerCredit: 5.00,
+    savings: 25,
     popular: false
   }
 ];
