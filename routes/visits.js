@@ -89,7 +89,7 @@ router.get('/stats', adminAuth, async (req, res) => {
     const week  = new Date(today); week.setDate(week.getDate() - 7);
     const month = new Date(today); month.setDate(month.getDate() - 30);
 
-    const [total, todayCount, weekCount, monthCount, stateBreakdown, cityBreakdown, recentVisits] = await Promise.all([
+    const [total, todayCount, weekCount, monthCount, stateBreakdown, cityBreakdown, recentVisits, pageBreakdown, deviceBreakdown] = await Promise.all([
       Visit.countDocuments(),
       Visit.countDocuments({ createdAt: { $gte: today } }),
       Visit.countDocuments({ createdAt: { $gte: week } }),
