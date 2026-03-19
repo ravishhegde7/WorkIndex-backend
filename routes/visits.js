@@ -1,32 +1,31 @@
 const express = require('express');
 const router  = express.Router();
-const fetch   = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
 const Visit   = require('../models/Visit');
-const jwt = require('jsonwebtoken');
+const jwt     = require('jsonwebtoken');
 
-// ─── Admin auth helper — accepts BOTH user JWT (role=admin) AND admin JWT ───
+// ─── Admin auth — checks isAdmin: true (matches admin login JWT) ─────────────
 function adminAuth(req, res, next) {
   try {
     const authHeader = req.headers['authorization'] || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    if (!token) return res.status(401).json({ success: false, message: 'No token' });
+    if (!token) return res.status(401).json({ success: false, message: 'No token provided' });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Admin panel tokens have { adminId } — user tokens have { id, role: 'admin' }
-    const isAdminToken = decoded.adminId || decoded.role === 'admin';
-    if (!isAdminToken) return res.status(403).json({ success: false, message: 'Not authorized' });
+    // Admin JWT contains { id, isAdmin: true, role: ... }  (see admin login route)
+    if (!decoded.isAdmin && decoded.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
 
     req.admin = decoded;
     next();
   } catch (err) {
-    return res.status(401).json({ success: false, message: 'Invalid token' });
+    return res.status(401).json({ success: false, message: 'Invalid or expired token' });
   }
 }
 
 // ═══════════════════════════════════════════════════════════
 // POST /api/visits/track  — PUBLIC, no auth
-// Called from frontend on every page load
 // ═══════════════════════════════════════════════════════════
 router.post('/track', async (req, res) => {
   try {
@@ -45,9 +44,7 @@ router.post('/track', async (req, res) => {
 
     if (sessionId) {
       const existing = await Visit.findOne({ sessionId });
-      if (existing) {
-        return res.json({ success: true, message: 'Already tracked' });
-      }
+      if (existing) return res.json({ success: true, message: 'Already tracked' });
     }
 
     let state   = 'Unknown';
@@ -57,8 +54,7 @@ router.post('/track', async (req, res) => {
     if (!isLocal && ip !== 'unknown') {
       try {
         const geoRes  = await fetch(
-          `http://ip-api.com/json/${ip}?fields=status,country,regionName,city`,
-          { timeout: 3000 }
+          `http://ip-api.com/json/${ip}?fields=status,country,regionName,city`
         );
         const geoData = await geoRes.json();
         if (geoData.status === 'success') {
@@ -75,16 +71,7 @@ router.post('/track', async (req, res) => {
       country = 'India';
     }
 
-    await Visit.create({
-      ip,
-      country,
-      state,
-      city,
-      page,
-      sessionId,
-      userAgent: req.headers['user-agent'] || '',
-    });
-
+    await Visit.create({ ip, country, state, city, page, sessionId, userAgent: req.headers['user-agent'] || '' });
     res.json({ success: true });
   } catch (error) {
     console.error('Visit track error:', error);
@@ -94,7 +81,6 @@ router.post('/track', async (req, res) => {
 
 // ═══════════════════════════════════════════════════════════
 // GET /api/visits/stats  — ADMIN ONLY
-// Accepts both admin JWT and user JWT with role=admin
 // ═══════════════════════════════════════════════════════════
 router.get('/stats', adminAuth, async (req, res) => {
   try {
@@ -134,11 +120,7 @@ router.get('/stats', adminAuth, async (req, res) => {
       { $match: { createdAt: { $gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) } } },
       {
         $group: {
-          _id: {
-            year:  { $year:  '$createdAt' },
-            month: { $month: '$createdAt' },
-            day:   { $dayOfMonth: '$createdAt' }
-          },
+          _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' }, day: { $dayOfMonth: '$createdAt' } },
           count: { $sum: 1 }
         }
       },
@@ -149,16 +131,13 @@ router.get('/stats', adminAuth, async (req, res) => {
       success: true,
       stats: {
         total,
-        today:   todayCount,
-        week:    weekCount,
-        month:   monthCount,
-        states:  stateBreakdown.map(s => ({ state: s._id || 'Unknown', count: s.count })),
-        cities:  cityBreakdown.map(c => ({ city:  c._id  || 'Unknown', count: c.count })),
-        daily:   dailyData.map(d => ({
-          date:  `${d._id.day}/${d._id.month}`,
-          count: d.count
-        })),
-        recent:  recentVisits
+        today:  todayCount,
+        week:   weekCount,
+        month:  monthCount,
+        states: stateBreakdown.map(s => ({ state: s._id || 'Unknown', count: s.count })),
+        cities: cityBreakdown.map(c => ({ city:  c._id  || 'Unknown', count: c.count })),
+        daily:  dailyData.map(d => ({ date: `${d._id.day}/${d._id.month}`, count: d.count })),
+        recent: recentVisits
       }
     });
   } catch (error) {
