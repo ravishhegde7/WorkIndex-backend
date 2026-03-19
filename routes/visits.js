@@ -113,7 +113,36 @@ router.get('/stats', adminAuth, async (req, res) => {
         .sort({ createdAt: -1 })
         .limit(10)
         .select('state city page createdAt')
-        .lean()
+        .lean(),
+
+      // Top pages
+      Visit.aggregate([
+        { $group: { _id: '$page', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 8 }
+      ]),
+
+      // Device type from userAgent
+      Visit.aggregate([
+        {
+          $addFields: {
+            deviceType: {
+              $cond: {
+                if: {
+                  $regexMatch: {
+                    input: { $ifNull: ['$userAgent', ''] },
+                    regex: /Mobile|Android|iPhone|iPad|tablet/i
+                  }
+                },
+                then: 'Mobile',
+                else: 'Desktop'
+              }
+            }
+          }
+        },
+        { $group: { _id: '$deviceType', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ])
     ]);
 
     const dailyData = await Visit.aggregate([
