@@ -166,6 +166,8 @@ router.get('/stats', adminAuth, async (req, res) => {
         states: stateBreakdown.map(s => ({ state: s._id || 'Unknown', count: s.count })),
         cities: cityBreakdown.map(c => ({ city:  c._id  || 'Unknown', count: c.count })),
         daily:  dailyData.map(d => ({ date: `${d._id.day}/${d._id.month}`, count: d.count })),
+        pages:   pageBreakdown.map(p  => ({ page:   p._id  || '/', count: p.count })),
+        devices: deviceBreakdown.map(d => ({ device: d._id  || 'Desktop', count: d.count })),
         recent: recentVisits
       }
     });
