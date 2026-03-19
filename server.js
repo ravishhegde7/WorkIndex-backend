@@ -86,6 +86,7 @@ app.use('/api/chats', require('./routes/chats'));
 const adminRoutes = require('./routes/admin');
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/visits', require('./routes/visits'));
 
 app.get('/create-admin', async (req, res) => {
   try {
