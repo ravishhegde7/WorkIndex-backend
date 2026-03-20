@@ -789,7 +789,20 @@ router.put('/requests/:id', protect, async (req, res) => {
   { new: true }
 ).populate('client', 'name');
 if (!request) return res.status(404).json({ success: false, message: 'Post not found' });
-try {
+
+    try {
+  var Notification = safeModel('Notification');
+  if (Notification && request.client && request.client._id) {
+    await Notification.create({
+      user: request.client._id,
+      type: 'admin_action',
+      title: '✏️ Your Request Was Edited',
+      message: 'Your request "' + (request.title || 'Untitled') + '" has been edited by admin. Please review it to ensure the details are correct.',
+      isRead: false
+    });
+  }
+} catch(e) {}
+    try {
   const { logAudit } = require('../utils/audit');
   logAudit(
     { id: req.admin._id, role: 'admin', name: req.admin.name },
