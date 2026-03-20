@@ -980,7 +980,9 @@ router.delete('/approaches/:id', protect, async (req, res) => {
   try {
     var Approach = safeModel('Approach');
     if (!Approach) return res.status(503).json({ success: false, message: 'Approach model not available' });
-    var approach = await Approach.findByIdAndDelete(req.params.id);
+    var approach = await Approach.findById(req.params.id).populate('expert', 'name');
+if (!approach) return res.status(404).json({ success: false, message: 'Approach not found' });
+await Approach.findByIdAndDelete(req.params.id);
     if (!approach) return res.status(404).json({ success: false, message: 'Approach not found' });
     try {
   const { logAudit } = require('../utils/audit');
