@@ -735,21 +735,21 @@ router.put('/requests/:id', protect, async (req, res) => {
     if (status      !== undefined && status !== '') updateFields.status = status;
         if (creditsRequired !== undefined && creditsRequired !== null) updateFields.credits = parseInt(creditsRequired) || 0;
     var request = await Request.findByIdAndUpdate(
-      req.params.id,
-      { $set: updateFields },
-      { new: true }
-    );
-    if (!request) return res.status(404).json({ success: false, message: 'Post not found' });
-    try {
+  req.params.id,
+  { $set: updateFields },
+  { new: true }
+).populate('client', 'name');
+if (!request) return res.status(404).json({ success: false, message: 'Post not found' });
+try {
   const { logAudit } = require('../utils/audit');
   logAudit(
     { id: req.admin._id, role: 'admin', name: req.admin.name },
     'admin_post_edited',
     { type: 'request', id: req.params.id, name: request.title || '' },
-    { updatedFields: Object.keys(updateFields) }
+    { updatedFields: Object.keys(updateFields), postedBy: request.client ? request.client.name : '' }
   ).catch(() => {});
 } catch(e) {}
-    res.json({ success: true, message: 'Post updated', request });
+res.json({ success: true, message: 'Post updated', request });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
