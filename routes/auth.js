@@ -137,6 +137,16 @@ try {
   if (user.role === 'client') sendClientWelcome({ to: user.email, name: user.name }).catch(() => {});
   else sendExpertWelcome({ to: user.email, name: user.name }).catch(() => {});
 } catch(e) {}
+
+try {
+  const { logAudit } = require('../utils/audit');
+  logAudit(
+    { id: user._id, role: user.role, name: user.name },
+    'signup',
+    { type: 'user', id: user._id, name: user.name },
+    { email: user.email, role: user.role }
+  ).catch(() => {});
+} catch(e) {}
     
     const token = generateToken(user._id);
 
