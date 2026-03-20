@@ -118,6 +118,15 @@ router.put('/me', protect, async (req, res) => {
       updateData, 
       { new: true, runValidators: true }
     );
+
+try {
+  logAudit(
+    { id: req.user._id, role: req.user.role, name: req.user.name },
+    'profile_updated',
+    { type: 'user', id: req.user._id, name: req.user.name },
+    { updatedFields: Object.keys(updateData) }
+  ).catch(() => {});
+} catch(e) {}
     
     res.json({
       success: true,
