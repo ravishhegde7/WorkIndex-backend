@@ -71,6 +71,7 @@ async function isEmailEnabledForUser(userId) {
     const user = await User.findById(userId).select('preferences').lean();
     if (!user) return true;
     const notifPrefs = user.preferences && user.preferences.notifications;
+        console.log('📧 Email pref check for', userId, ':', JSON.stringify(notifPrefs)); // ← ADD THIS
     if (notifPrefs && notifPrefs.email === false) return false;
     return true;
   } catch(e) {
