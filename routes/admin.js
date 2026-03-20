@@ -249,6 +249,16 @@ router.post('/users/:id/credits', protect, async (req, res) => {
       });
     }
 
+try {
+  const { logAudit } = require('../utils/audit');
+  logAudit(
+    { id: req.admin._id, role: 'admin', name: req.admin.name },
+    'admin_credit_adjusted',
+    { type: 'user', id: req.params.id, name: user.name },
+    { action, amount, oldBalance, newBalance, reason, txType }
+  ).catch(() => {});
+} catch(e) {}    
+    
     res.json({ success: true, message: 'Credits updated', oldBalance, newBalance });
   } catch (err) { console.error('Credit adjust error:', err); res.status(500).json({ success: false, message: err.message }); }
 });
