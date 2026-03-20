@@ -222,7 +222,8 @@ async function sendClientExpertApproached({ to, name, postTitle, expertName, use
 async function sendClientPostSuspended({ to, name, postTitle, reportCount, userId }) {
   const type = 'client_post_suspended';
   if (!await isEnabled(type)) return;
-
+if (!await isEmailEnabledForUser(userId)) return;
+  
   const html = layout('Your request has been suspended ⚠️', `
     ${para(`Hi <strong>${name}</strong>,`)}
     ${warningBox(`Your request <strong>"${postTitle}"</strong> has been flagged and suspended after being reported by ${reportCount} professionals on the platform.`)}
@@ -243,6 +244,7 @@ async function sendClientPostSuspended({ to, name, postTitle, reportCount, userI
 async function sendClientRestricted({ to, name, reason, warningCount, userId }) {
   const type = 'client_restricted';
   if (!await isEnabled(type)) return;
+  if (!await isEmailEnabledForUser(userId)) return;
 
   const html = layout('Your account has been restricted 🚫', `
     ${para(`Hi <strong>${name}</strong>,`)}
@@ -268,7 +270,8 @@ async function sendClientRestricted({ to, name, reason, warningCount, userId }) 
 async function sendClientBanned({ to, name, reason, userId }) {
   const type = 'client_banned';
   if (!await isEnabled(type)) return;
-
+if (!await isEmailEnabledForUser(userId)) return;
+  
   const html = layout('Your account has been suspended 🚫', `
     ${para(`Hi <strong>${name}</strong>,`)}
     ${dangerBox(`Your WorkIndex account has been <strong>permanently suspended</strong> due to serious violations of our Terms of Service.<br><br>
@@ -317,7 +320,8 @@ async function sendExpertWelcome({ to, name }) {
 async function sendExpertCreditsPurchased({ to, name, creditsPurchased, amountPaid, newBalance, userId }) {
   const type = 'expert_credits_purchased';
   if (!await isEnabled(type)) return;
-
+if (!await isEmailEnabledForUser(userId)) return;
+  
   const html = layout('Credits added to your account ✅', `
     ${para(`Hi <strong>${name}</strong>,`)}
     ${para(`Your credit purchase was successful. Your account has been topped up and you're ready to approach more clients.`)}
@@ -338,7 +342,8 @@ async function sendExpertCreditsPurchased({ to, name, creditsPurchased, amountPa
 async function sendExpertCreditsRefunded({ to, name, creditsRefunded, newBalance, adminNote, userId }) {
   const type = 'expert_credits_refunded';
   if (!await isEnabled(type)) return;
-
+if (!await isEmailEnabledForUser(userId)) return;
+  
   const html = layout('Credit refund processed ✅', `
     ${para(`Hi <strong>${name}</strong>,`)}
     ${para(`A credit refund has been processed to your WorkIndex account by the admin team.`)}
@@ -358,6 +363,7 @@ async function sendExpertCreditsRefunded({ to, name, creditsRefunded, newBalance
 async function sendExpertApproachSubmitted({ to, name, postTitle, clientName, creditsSpent, remainingCredits, userId }) {
   const type = 'expert_approach_sent';
   if (!await isEnabled(type)) return;
+  if (!await isEmailEnabledForUser(userId)) return;
 
   const html = layout('Your approach has been submitted ✅', `
     ${para(`Hi <strong>${name}</strong>,`)}
@@ -384,6 +390,7 @@ async function sendExpertApproachSubmitted({ to, name, postTitle, clientName, cr
 async function sendExpertRestricted({ to, name, reason, warningCount, userId }) {
   const type = 'expert_restricted';
   if (!await isEnabled(type)) return;
+  if (!await isEmailEnabledForUser(userId)) return;
 
   const html = layout('Your account has been restricted 🚫', `
     ${para(`Hi <strong>${name}</strong>,`)}
@@ -409,6 +416,7 @@ async function sendExpertRestricted({ to, name, reason, warningCount, userId }) 
 async function sendExpertBanned({ to, name, reason, userId }) {
   const type = 'expert_banned';
   if (!await isEnabled(type)) return;
+  if (!await isEmailEnabledForUser(userId)) return;
 
   const html = layout('Your professional account has been suspended 🚫', `
     ${para(`Hi <strong>${name}</strong>,`)}
