@@ -599,6 +599,15 @@ router.post('/users/:id/action', protect, async (req, res) => {
     else if (action === 'reject')  { user.isRejected = true; user.isApproved = false; msg = 'Expert rejected'; }
     else return res.status(400).json({ success: false, message: 'Unknown action' });
     await user.save();
+    try {
+  const { logAudit } = require('../utils/audit');
+  logAudit(
+    { id: req.admin._id, role: 'admin', name: req.admin.name },
+    'admin_user_action',
+    { type: 'user', id: req.params.id, name: user.name },
+    { action, reason, result: msg }
+  ).catch(() => {});
+} catch(e) {}
     res.json({ success: true, message: msg, user: { isBanned: user.isBanned, isFlagged: user.isFlagged, warnings: user.warnings, isApproved: user.isApproved } });
   } catch (err) { res.status(500).json({ success: false }); }
 });
