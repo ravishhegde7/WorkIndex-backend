@@ -821,7 +821,20 @@ router.delete('/requests/:id', protect, async (req, res) => {
     var request = await Request.findById(req.params.id).populate('client', 'name');
 if (!request) return res.status(404).json({ success: false, message: 'Post not found' });
 await Request.findByIdAndDelete(req.params.id);
-try {
+
+    try {
+  var Notification = safeModel('Notification');
+  if (Notification && request.client && request.client._id) {
+    await Notification.create({
+      user: request.client._id,
+      type: 'admin_action',
+      title: '🗑️ Your Request Was Removed',
+      message: 'Your request "' + (request.title || 'Untitled') + '" has been removed by admin for violating platform guidelines. Contact support if you have questions.',
+      isRead: false
+    });
+  }
+} catch(e) {}
+    try {
   const { logAudit } = require('../utils/audit');
   logAudit(
     { id: req.admin._id, role: 'admin', name: req.admin.name },
