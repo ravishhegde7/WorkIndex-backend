@@ -180,6 +180,7 @@ async function sendClientWelcome({ to, name }) {
 async function sendClientPostCreated({ to, name, postTitle, service, userId }) {
   const type = 'client_post_created';
   if (!await isEnabled(type)) return;
+  if (!await isEmailEnabledForUser(userId)) return;
 
   const html = layout('Your request has been posted ✅', `
     ${para(`Hi <strong>${name}</strong>,`)}
