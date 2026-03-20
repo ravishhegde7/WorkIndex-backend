@@ -202,6 +202,7 @@ async function sendClientPostCreated({ to, name, postTitle, service, userId }) {
 async function sendClientExpertApproached({ to, name, postTitle, expertName, userId }) {
   const type = 'client_expert_approached';
   if (!await isEnabled(type)) return;
+  if (!await isEmailEnabledForUser(userId)) return;
 
   const html = layout('A professional has responded to your request 📬', `
     ${para(`Hi <strong>${name}</strong>,`)}
