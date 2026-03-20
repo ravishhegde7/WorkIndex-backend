@@ -985,23 +985,71 @@ router.delete('/approaches/:id', protect, async (req, res) => {
   try {
     var Approach = safeModel('Approach');
     if (!Approach) return res.status(503).json({ success: false, message: 'Approach model not available' });
-    var approach = await Approach.findById(req.params.id).populate('expert', 'name');
-if (!approach) return res.status(404).json({ success: false, message: 'Approach not found' });
-await Approach.findByIdAndDelete(req.params.id);
-    if (!approach) return res.status(404).json({ success: false, message: 'Approach not found' });
-    try {
-  const { logAudit } = require('../utils/audit');
-  logAudit(
-    { id: req.admin._id, role: 'admin', name: req.admin.name },
-    'admin_approach_deleted',
-    { type: 'approach', id: req.params.id, name: approach.expert ? approach.expert.toString() : '' },
-    {}
-  ).catch(() => {});
-} catch(e) {}
-    res.json({ success: true, message: 'Approach deleted' });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
-});
 
+    var approach = await Approach.findById(req.params.id)
+      .populate('expert', 'name')
+      .populate('client', 'name')
+      .populate('request', 'title');
+    if (!approach) return res.status(404).json({ success: false, message: 'Approach not found' });
+
+    // ── Auto-refund credits to expert if they spent any ──
+    var creditsRefunded = 0;
+    if (approach.creditsSpent && approach.creditsSpent > 0) {
+      try {
+        var User = mongoose.model('User');
+        var CreditTx = safeReq('../models/CreditTransaction');
+        var expertId = approach.expert ? (approach.expert._id || approach.expert) : null;
+        if (expertId) {
+          var expert = await User.findById(expertId);
+          if (expert) {
+            var oldBal = expert.credits || 0;
+            expert.credits = oldBal + approach.creditsSpent;
+            await expert.save();
+            creditsRefunded = approach.creditsSpent;
+            if (CreditTx) {
+              await CreditTx.create({
+                user: expert._id,
+                type: 'refund',
+                amount: approach.creditsSpent,
+                balanceBefore: oldBal,
+                balanceAfter: expert.credits,
+                description: 'Admin deleted approach — credits refunded automatically'
+              });
+            }
+          }
+        }
+      } catch(refundErr) {
+        console.error('Approach refund error:', refundErr.message);
+      }
+    }
+
+    await Approach.findByIdAndDelete(req.params.id);
+
+    try {
+      const { logAudit } = require('../utils/audit');
+      logAudit(
+        { id: req.admin._id, role: 'admin', name: req.admin.name },
+        'admin_approach_deleted',
+        { type: 'approach', id: req.params.id, name: approach.expert ? approach.expert.name : '' },
+        {
+          expertName: approach.expert ? approach.expert.name : '',
+          requestTitle: approach.request ? approach.request.title : '',
+          creditsRefunded: creditsRefunded
+        }
+      ).catch(() => {});
+    } catch(e) {}
+
+    res.json({
+      success: true,
+      message: creditsRefunded > 0
+        ? 'Approach deleted and ' + creditsRefunded + ' credits refunded to expert'
+        : 'Approach deleted',
+      creditsRefunded
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 router.get('/chats/:id/messages', protect, async (req, res) => {
   try {
