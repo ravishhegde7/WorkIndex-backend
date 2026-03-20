@@ -381,6 +381,15 @@ router.put('/profile', protect, async (req, res) => {
       { new: true, runValidators: false }
     ).select('-password');
 
+try {
+  logAudit(
+    { id: req.user._id, role: req.user.role, name: req.user.name },
+    'profile_updated',
+    { type: 'user', id: req.user._id, name: req.user.name },
+    { updatedFields: Object.keys(profile) }
+  ).catch(() => {});
+} catch(e) {}
+    
     res.json({
       success: true,
       message: 'Profile updated successfully',
