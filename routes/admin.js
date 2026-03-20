@@ -618,6 +618,33 @@ router.post('/users/:id/action', protect, async (req, res) => {
     else return res.status(400).json({ success: false, message: 'Unknown action' });
     await user.save();
     try {
+  var Notification = safeModel('Notification');
+  if (Notification) {
+    var actionMessages = {
+      ban:        { title: '🚫 Account Suspended', msg: 'Your account has been suspended due to a violation of our platform policies. Please contact support if you believe this is an error.' },
+      unban:      { title: '✅ Account Reinstated', msg: 'Your account suspension has been lifted. You can now access all platform features.' },
+      warn:       { title: '⚠️ Warning Issued', msg: 'You have received a warning from admin' + (reason ? ': ' + reason : '.') + ' Warning count: ' + (user.warnings || 0) + '/3.' },
+      flag:       { title: '🚩 Account Flagged', msg: 'Your account has been flagged for review. Some features may be temporarily limited.' },
+      unflag:     { title: '✅ Account Flag Removed', msg: 'The flag on your account has been removed. All features are restored.' },
+      restrict:   { title: '🔒 Account Restricted', msg: 'Your account has been restricted' + (reason ? ' due to: ' + reason : '.') + ' Contact support to resolve this.' },
+      unrestrict: { title: '🔓 Account Restriction Lifted', msg: 'Your account restriction has been lifted and warnings have been reset. Welcome back!' },
+      approve:    { title: '✅ Profile Approved', msg: 'Congratulations! Your expert profile has been approved. You can now receive and respond to client requests.' },
+      reject:     { title: '❌ Profile Not Approved', msg: 'Your expert profile could not be approved at this time. Please contact support for more details.' }
+    };
+    var notifData = actionMessages[action];
+    if (notifData) {
+      await Notification.create({
+        user: user._id,
+        type: 'admin_action',
+        title: notifData.title,
+        message: notifData.msg,
+        isRead: false
+      });
+    }
+  }
+} catch(e) {}
+    
+    try {
   const { logAudit } = require('../utils/audit');
   logAudit(
     { id: req.admin._id, role: 'admin', name: req.admin.name },
