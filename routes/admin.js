@@ -982,6 +982,15 @@ router.delete('/approaches/:id', protect, async (req, res) => {
     if (!Approach) return res.status(503).json({ success: false, message: 'Approach model not available' });
     var approach = await Approach.findByIdAndDelete(req.params.id);
     if (!approach) return res.status(404).json({ success: false, message: 'Approach not found' });
+    try {
+  const { logAudit } = require('../utils/audit');
+  logAudit(
+    { id: req.admin._id, role: 'admin', name: req.admin.name },
+    'admin_approach_deleted',
+    { type: 'approach', id: req.params.id, name: approach.expert ? approach.expert.toString() : '' },
+    {}
+  ).catch(() => {});
+} catch(e) {}
     res.json({ success: true, message: 'Approach deleted' });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
