@@ -5,6 +5,8 @@ const jwt      = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const bcrypt   = require('bcryptjs');
 const Admin    = require('../models/Admin');
+const Notification = require('../models/Notification');  // ← ADD THIS
+
 
 const protect = async (req, res, next) => {
   try {
