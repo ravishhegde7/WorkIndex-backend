@@ -278,6 +278,16 @@ router.post('/users/:id/reset-password', protect, async (req, res) => {
     var hashed = await bcrypt.hash(newPassword, 12);
     await User.findByIdAndUpdate(req.params.id, { password: hashed });
 
+try {
+  const { logAudit } = require('../utils/audit');
+  logAudit(
+    { id: req.admin._id, role: 'admin', name: req.admin.name },
+    'admin_password_reset',
+    { type: 'user', id: req.params.id, name: user.name },
+    { email: user.email }
+  ).catch(() => {});
+} catch(e) {}
+    
     res.json({ success: true, message: 'Password reset successfully' });
   } catch (err) { console.error('Reset PW error:', err); res.status(500).json({ success: false, message: err.message }); }
 });
