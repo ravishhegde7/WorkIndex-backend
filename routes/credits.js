@@ -79,14 +79,15 @@ router.get('/transactions', protect, authorize('expert'), async (req, res) => {
     
     const skip = (page - 1) * limit;
     
-    const transactions = await Transaction.find(query)
+    const CreditTransaction = require('../models/CreditTransaction');
+    const transactions = await CreditTransaction.find(query)
       .sort('-createdAt')
       .skip(skip)
       .limit(parseInt(limit))
       .populate('relatedApproach')
       .lean();
     
-    const total = await Transaction.countDocuments(query);
+    const total = await CreditTransaction.countDocuments(query);
     
     res.json({ 
       success: true, 
