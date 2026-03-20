@@ -703,6 +703,20 @@ router.delete('/ratings/:id', protect, async (req, res) => {
     }
 
     await Rating.findByIdAndDelete(req.params.id);
+
+  try {
+  var Notification = safeModel('Notification');
+  if (Notification && rating.expert) {
+    var expertId = rating.expert._id || rating.expert;
+    await Notification.create({
+      user: expertId,
+      type: 'admin_action',
+      title: '⭐ A Review Was Removed',
+      message: 'A ' + (rating.rating || '') + '-star review on your profile has been removed by admin for violating our review guidelines.',
+      isRead: false
+    });
+  }
+} catch(e) {}  
     try {
   const { logAudit } = require('../utils/audit');
   logAudit(
