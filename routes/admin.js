@@ -756,18 +756,19 @@ router.put('/requests/:id', protect, async (req, res) => {
 router.delete('/requests/:id', protect, async (req, res) => {
   try {
     var Request = mongoose.model('Request');
-    var request = await Request.findByIdAndDelete(req.params.id);
-    if (!request) return res.status(404).json({ success: false, message: 'Post not found' });
-    try {
+    var request = await Request.findById(req.params.id).populate('client', 'name');
+if (!request) return res.status(404).json({ success: false, message: 'Post not found' });
+await Request.findByIdAndDelete(req.params.id);
+try {
   const { logAudit } = require('../utils/audit');
   logAudit(
     { id: req.admin._id, role: 'admin', name: req.admin.name },
     'admin_post_deleted',
     { type: 'request', id: req.params.id, name: request.title || '' },
-    {}
+    { postedBy: request.client ? request.client.name : '' }
   ).catch(() => {});
 } catch(e) {}
-    res.json({ success: true, message: 'Post deleted' });
+res.json({ success: true, message: 'Post deleted' });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
