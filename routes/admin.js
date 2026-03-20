@@ -1097,6 +1097,25 @@ router.delete('/approaches/:id', protect, async (req, res) => {
     await Approach.findByIdAndDelete(req.params.id);
 
     try {
+  var Notification = safeModel('Notification');
+  if (Notification) {
+    var expertNotifId = approach.expert ? (approach.expert._id || approach.expert) : null;
+    if (expertNotifId) {
+      var approachMsg = 'Your approach for "' + (approach.request ? approach.request.title : 'a request') + '" has been removed by admin.';
+      if (creditsRefunded > 0) {
+        approachMsg += ' ' + creditsRefunded + ' credits have been refunded to your account.';
+      }
+      await Notification.create({
+        user: expertNotifId,
+        type: 'admin_action',
+        title: '🗑️ Approach Removed',
+        message: approachMsg,
+        isRead: false
+      });
+    }
+  }
+} catch(e) {}
+    try {
       const { logAudit } = require('../utils/audit');
       logAudit(
         { id: req.admin._id, role: 'admin', name: req.admin.name },
