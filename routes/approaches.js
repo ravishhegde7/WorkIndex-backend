@@ -75,30 +75,6 @@ router.post('/', protect, authorize('expert'), async (req, res) => {
     
     console.log('  💰 Credits deducted. New balance:', expert.credits);
 
-    // ─── LOG TO CREDIT TRANSACTION ───
-try {
-  const CreditTx = require('../models/CreditTransaction');
-  const client = await User.findById(request.client).select('name').lean();
-  await CreditTx.create({
-    user: expert._id,
-    type: 'spent',
-    amount: -creditsRequired,
-    balanceBefore: expert.credits + creditsRequired,
-    balanceAfter: expert.credits,
-    description: `Approach sent for: ${request.title}`,
-    relatedRequest: request._id,
-    relatedApproach: approach._id,
-    relatedClient: request.client,
-    approachDetails: {
-      requestTitle: request.title,
-      requestService: request.service,
-      clientName: client ? client.name : 'Unknown',
-      creditsSpent: creditsRequired
-    },
-    initiatedBy: 'user',
-    status: 'completed'
-  });
-} catch(e) { console.error('CreditTx spend log failed:', e.message); }
     
     // Create approach
     const approach = await Approach.create({
