@@ -679,4 +679,46 @@ router.post('/:id/report', protect, authorize('expert'), async (req, res) => {
   }
 });
 
+// ─── UPDATE REQUEST (CLIENT ONLY) ───
+router.put('/:id', protect, authorize('client'), async (req, res) => {
+  try {
+    const { title, description, budget, timeline } = req.body;
+
+    const request = await Request.findById(req.params.id);
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Request not found' });
+    }
+
+    if (request.client.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    // Only allow editing pending/active requests
+    if (!['pending', 'active'].includes(request.status)) {
+      return res.status(400).json({ success: false, message: 'Cannot edit a completed or cancelled request' });
+    }
+
+    if (title)       request.title       = title;
+    if (description) request.description = description;
+    if (budget)      request.budget      = budget;
+    if (timeline)    request.timeline    = timeline;
+
+    request.updatedAt = new Date();
+    await request.save();
+
+    logAudit(
+      { id: req.user.id, role: 'client', name: req.user.name },
+      'request_edited',
+      { type: 'request', id: request._id, name: request.title },
+      { fieldsUpdated: Object.keys(req.body).join(', ') }
+    ).catch(() => {});
+
+    res.json({ success: true, request });
+  } catch (error) {
+    console.error('❌ Update request error:', error);
+    res.status(500).json({ success: false, message: 'Error updating request' });
+  }
+});
+
 module.exports = router;
