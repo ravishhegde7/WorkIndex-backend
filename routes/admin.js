@@ -731,6 +731,15 @@ router.put('/requests/:id', protect, async (req, res) => {
       { new: true }
     );
     if (!request) return res.status(404).json({ success: false, message: 'Post not found' });
+    try {
+  const { logAudit } = require('../utils/audit');
+  logAudit(
+    { id: req.admin._id, role: 'admin', name: req.admin.name },
+    'admin_post_edited',
+    { type: 'request', id: req.params.id, name: request.title || '' },
+    { updatedFields: Object.keys(updateFields) }
+  ).catch(() => {});
+} catch(e) {}
     res.json({ success: true, message: 'Post updated', request });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
