@@ -658,6 +658,15 @@ router.delete('/ratings/:id', protect, async (req, res) => {
     }
 
     await Rating.findByIdAndDelete(req.params.id);
+    try {
+  const { logAudit } = require('../utils/audit');
+  logAudit(
+    { id: req.admin._id, role: 'admin', name: req.admin.name },
+    'admin_review_deleted',
+    { type: 'rating', id: req.params.id, name: (rating.expert && rating.expert.name) || '' },
+    { reviewRating: rating.rating, client: rating.client ? rating.client.toString() : '' }
+  ).catch(() => {});
+} catch(e) {}
     res.json({ success: true, message: 'Review deleted' });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
