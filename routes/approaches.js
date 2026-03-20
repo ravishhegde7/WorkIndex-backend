@@ -87,6 +87,34 @@ router.post('/', protect, authorize('expert'), async (req, res) => {
   status: 'pending',
   contactUnlocked: true
 });
+
+// ─── LOG TO CREDIT TRANSACTION ───
+    try {
+      const CreditTx = require('../models/CreditTransaction');
+      const clientForTx = await User.findById(request.client).select('name').lean();
+      await CreditTx.create({
+        user: expert._id,
+        type: 'spent',
+        amount: -creditsRequired,
+        balanceBefore: expert.credits + creditsRequired,
+        balanceAfter: expert.credits,
+        description: `Approach sent for: ${request.title}`,
+        relatedRequest: request._id,
+        relatedApproach: approach._id,
+        relatedClient: request.client,
+        approachDetails: {
+          requestTitle: request.title,
+          requestService: request.service,
+          clientName: clientForTx ? clientForTx.name : 'Unknown',
+          creditsSpent: creditsRequired
+        },
+        initiatedBy: 'user',
+        status: 'completed'
+      });
+    } catch(e) { console.error('CreditTx spend log failed:', e.message); }
+
+    // Increment approach count on request
+    request.approachCount = (request.approachCount || 0) + 1;
     
     // Increment approach count on request
     request.approachCount = (request.approachCount || 0) + 1;
