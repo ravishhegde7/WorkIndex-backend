@@ -62,6 +62,21 @@ async function logEmail({ to, toName, subject, type, category, reason, status, e
   }
 }
 
+// ─── PER-USER EMAIL PREFERENCE CHECK ─────────────────────
+async function isEmailEnabledForUser(userId) {
+  try {
+    if (!userId) return true;
+    const mongoose = require('mongoose');
+    const User = mongoose.model('User');
+    const user = await User.findById(userId).select('preferences').lean();
+    if (!user) return true;
+    const notifPrefs = user.preferences && user.preferences.notifications;
+    if (notifPrefs && notifPrefs.email === false) return false;
+    return true;
+  } catch(e) {
+    return true; // fail open — better to send than miss
+  }
+}
 // ─── SETTINGS CHECK ───────────────────────────────────────
 async function isEnabled(type) {
   try {
