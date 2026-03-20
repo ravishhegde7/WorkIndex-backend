@@ -250,6 +250,24 @@ router.post('/users/:id/credits', protect, async (req, res) => {
     }
 
 try {
+  var Notification = safeModel('Notification');
+  if (Notification) {
+    var creditMsg = action === 'add'
+      ? '💰 ' + amount + ' credits have been added to your account by admin. New balance: ' + newBalance + ' credits.'
+      : action === 'deduct'
+      ? '⚠️ ' + amount + ' credits have been deducted from your account by admin. New balance: ' + newBalance + ' credits.'
+      : '🔄 Your credit balance has been updated by admin. New balance: ' + newBalance + ' credits.';
+    await Notification.create({
+      user: user._id,
+      type: 'admin_action',
+      title: '💳 Credit Balance Updated',
+      message: creditMsg + (reason ? ' Reason: ' + reason : ''),
+      isRead: false
+    });
+  }
+} catch(e) {}
+    
+try {
   const { logAudit } = require('../utils/audit');
   logAudit(
     { id: req.admin._id, role: 'admin', name: req.admin.name },
