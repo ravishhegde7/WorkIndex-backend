@@ -1599,6 +1599,31 @@ try {
 
     } else if (action === 'delete') {
       await request.deleteOne();
+
+      // ── Bell notification to client ──
+try {
+  const Notification = safeModel('Notification');
+  if (Notification && request.client) {
+    await Notification.create({
+      user:    request.client,
+      type:    'admin_action',
+      title:   '🗑️ Your Request Was Permanently Removed',
+      message: 'Your request "' + (request.title || 'Untitled') + '" has been permanently removed by admin after being flagged by multiple professionals. Contact support if you have questions.',
+      isRead:  false
+    });
+  }
+} catch (e) {}
+
+// ── Audit log ──
+try {
+  const { logAudit } = require('../utils/audit');
+  logAudit(
+    { id: req.admin._id, role: 'admin', name: req.admin.adminId },
+    'suspended_request_deleted',
+    { type: 'request', id: req.params.id, name: request.title || '' },
+    { clientId: String(request.client), reportCount: (request.reports || []).length }
+  ).catch(() => {});
+} catch (e) {}
       res.json({ success: true, message: 'Request permanently deleted' });
 
     } else {
