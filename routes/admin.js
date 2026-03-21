@@ -537,6 +537,30 @@ router.post('/tickets/:id/approve', protect, async (req, res) => {
     ticket.status = 'resolved'; ticket.decision = 'REFUND_APPROVED';
     ticket.creditsRefunded = creditsToAdd; ticket.adminNote = req.body.note || ''; ticket.resolvedAt = new Date();
     await ticket.save();
+
+    // ── Bell notification to user ──
+try {
+  if (Notification && ticket.user) {
+    await Notification.create({
+      user:    ticket.user._id,
+      type:    'admin_action',
+      title:   '✅ Refund Approved',
+      message: creditsToAdd + ' credits have been added to your account. Your support ticket has been resolved.',
+      isRead:  false
+    });
+  }
+} catch (e) {}
+
+// ── Audit log ──
+try {
+  const { logAudit } = require('../utils/audit');
+  logAudit(
+    { id: req.admin._id, role: 'admin', name: req.admin.adminId },
+    'ticket_refund_approved',
+    { type: 'ticket', id: req.params.id, name: ticket.user ? ticket.user.name : 'User' },
+    { creditsAdded: creditsToAdd, ticketId: String(ticket._id) }
+  ).catch(() => {});
+} catch (e) {}
     res.json({ success: true, message: 'Refund approved', creditsAdded: creditsToAdd });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
