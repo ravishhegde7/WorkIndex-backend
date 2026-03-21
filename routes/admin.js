@@ -575,6 +575,31 @@ router.post('/tickets/:id/reject', protect, async (req, res) => {
     ticket.status = 'resolved'; ticket.decision = 'REFUND_REJECTED';
     ticket.adminNote = req.body.note || ''; ticket.resolvedAt = new Date();
     await ticket.save();
+
+    // ── Bell notification to user ──
+try {
+  const Notification = safeModel('Notification');
+  if (Notification && ticket.user) {
+    await Notification.create({
+      user:    ticket.user,
+      type:    'admin_action',
+      title:   '❌ Refund Request Rejected',
+      message: 'Your refund request has been reviewed and could not be approved. If you have questions, please raise a new support ticket.',
+      isRead:  false
+    });
+  }
+} catch (e) {}
+
+// ── Audit log ──
+try {
+  const { logAudit } = require('../utils/audit');
+  logAudit(
+    { id: req.admin._id, role: 'admin', name: req.admin.adminId },
+    'ticket_refund_rejected',
+    { type: 'ticket', id: req.params.id, name: '' },
+    { note: req.body.note || '', ticketId: String(ticket._id) }
+  ).catch(() => {});
+} catch (e) {}
     res.json({ success: true, message: 'Refund rejected' });
   } catch (err) { res.status(500).json({ success: false }); }
 });
