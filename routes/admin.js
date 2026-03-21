@@ -1863,6 +1863,30 @@ router.post('/tickets/:id/canned', protect, async (req, res) => {
       } catch(e) {}
     }
 
+    // ── Bell notification to user ──
+try {
+  const NotifModel = safeModel('Notification');
+  if (NotifModel && ticket.user) {
+    const userId = ticket.user._id || ticket.user;
+    const bellMessages = {
+      refund_approved:       { title: '✅ Refund Approved', msg: 'Your refund has been approved. ' + (ticket.eligibleCredits || 0) + ' credits added to your account.' },
+      not_eligible:          { title: '❌ Refund Not Eligible', msg: 'Your refund request has been reviewed and found ineligible. Please contact support for details.' },
+      under_investigation:   { title: '🔍 Ticket Under Investigation', msg: 'Your support ticket is being actively investigated. We will update you within 24–48 hours.' },
+      resolved_no_action:    { title: '✔️ Ticket Resolved', msg: 'Your support ticket has been reviewed and resolved. No further action needed.' },
+      contact_support:       { title: '📞 Action Required', msg: 'Please contact us at workindex318@gmail.com with your ticket ID for further assistance.' }
+    };
+    const bell = bellMessages[cannedType];
+    if (bell) {
+      await NotifModel.create({
+        user:    userId,
+        type:    'admin_action',
+        title:   bell.title,
+        message: bell.msg + (note ? ' Admin note: ' + note : ''),
+        isRead:  false
+      });
+    }
+  }
+} catch (e) {}
     // Audit log
     try {
       var { logAudit } = require('../utils/audit');
