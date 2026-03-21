@@ -238,6 +238,9 @@ router.post('/tickets', protect, async (req, res) => {
     var { subject, description, priority, issueType } = req.body;
     if (!subject) return res.status(400).json({ success: false, message: 'Subject required' });
 
+    var { subject, description, priority, issueType,
+          relatedApproachId, eligibleCredits, isExpertRefund } = req.body;
+
     var ticketData = {
       user: req.user._id,
       issueType: issueType || subject,
@@ -248,6 +251,16 @@ router.post('/tickets', protect, async (req, res) => {
     };
 
     if (req.user.role === 'expert') ticketData.expert = req.user._id;
+
+    // Expert credit refund — link the approach
+    if (relatedApproachId) ticketData.relatedApproachId = relatedApproachId;
+    if (eligibleCredits)   ticketData.eligibleCredits   = parseInt(eligibleCredits) || 0;
+    if (isExpertRefund)    ticketData.isExpertRefund     = true;
+
+    // Auto-set pending_review for credit refund tickets so admin sees them in refunds queue
+    if (isExpertRefund && ticketData.eligibleCredits > 0) {
+      ticketData.status = 'pending_review';
+    }
 
     var ticket = await SupportTicket.create(ticketData);
     res.status(201).json({ success: true, message: 'Ticket created', ticket });
