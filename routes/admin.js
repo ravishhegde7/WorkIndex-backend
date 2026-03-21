@@ -1570,6 +1570,31 @@ router.post('/suspended-requests/:id/action', protect, async (req, res) => {
       await request.save();
       // Unrestrict the client too
       await User.findByIdAndUpdate(request.client, { isRestricted: false });
+
+      // ── Bell notification to client ──
+try {
+  const Notification = safeModel('Notification');
+  if (Notification && request.client) {
+    await Notification.create({
+      user:    request.client,
+      type:    'admin_action',
+      title:   '✅ Your Request Has Been Restored',
+      message: 'Your request "' + (request.title || 'Untitled') + '" has been reviewed and restored by admin. Your account restriction has also been lifted.',
+      isRead:  false
+    });
+  }
+} catch (e) {}
+
+// ── Audit log ──
+try {
+  const { logAudit } = require('../utils/audit');
+  logAudit(
+    { id: req.admin._id, role: 'admin', name: req.admin.adminId },
+    'suspended_request_restored',
+    { type: 'request', id: req.params.id, name: request.title || '' },
+    { clientId: String(request.client) }
+  ).catch(() => {});
+} catch (e) {}
       res.json({ success: true, message: 'Request restored and client unrestricted' });
 
     } else if (action === 'delete') {
