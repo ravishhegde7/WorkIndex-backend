@@ -18,7 +18,9 @@ const supportTicketSchema = new mongoose.Schema({
   transactionBreakdown: [{ type: mongoose.Schema.Types.Mixed }],
   followUpCount:    { type: Number, default: 0 },
   lastFollowUp:     { type: Date, default: null },
-  escalatedAt:      { type: Date, default: null }
+  escalatedAt:        { type: Date, default: null },
+  relatedApproachId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Approach', default: null },
+  isExpertRefund:     { type: Boolean, default: false }
 }, { timestamps: true });
 
 module.exports = mongoose.models.SupportTicket || mongoose.model('SupportTicket', supportTicketSchema);
