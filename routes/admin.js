@@ -1902,5 +1902,59 @@ router.post('/danger/clear-category', protect, async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+// ─── EXPERT INVITE ACTIONS ────────────────────────────────────────────────────
+
+// Mark invite as completed
+router.post('/interests/:id/complete', protect, async (req, res) => {
+  try {
+    const Notification = mongoose.models['Notification'];
+    if (!Notification) return res.status(503).json({ success: false, message: 'Notification model not found' });
+
+    const notif = await Notification.findByIdAndUpdate(
+      req.params.id,
+      { $set: { 'data.completed': true } },
+      { new: true }
+    );
+    if (!notif) return res.status(404).json({ success: false, message: 'Invite not found' });
+
+    res.json({ success: true, message: 'Marked as completed' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Reset invite to pending (undo unlock or completion)
+router.post('/interests/:id/reset', protect, async (req, res) => {
+  try {
+    const Notification = mongoose.models['Notification'];
+    if (!Notification) return res.status(503).json({ success: false, message: 'Notification model not found' });
+
+    const notif = await Notification.findByIdAndUpdate(
+      req.params.id,
+      { $set: { 'data.completed': false, 'data.unlocked': false } },
+      { new: true }
+    );
+    if (!notif) return res.status(404).json({ success: false, message: 'Invite not found' });
+
+    res.json({ success: true, message: 'Reset to pending' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Delete invite permanently
+router.delete('/interests/:id', protect, async (req, res) => {
+  try {
+    const Notification = mongoose.models['Notification'];
+    if (!Notification) return res.status(503).json({ success: false, message: 'Notification model not found' });
+
+    const notif = await Notification.findByIdAndDelete(req.params.id);
+    if (!notif) return res.status(404).json({ success: false, message: 'Invite not found' });
+
+    res.json({ success: true, message: 'Invite deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 module.exports = router;
