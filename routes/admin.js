@@ -2134,5 +2134,19 @@ router.delete('/interests/:id', protect, async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+router.get('/approaches/:id', protect, async (req, res) => {
+  try {
+    const Approach = safeReq('../models/Approach');
+    if (!Approach) return res.status(503).json({ success: false });
+    const approach = await Approach.findById(req.params.id)
+      .populate('expert', 'name email')
+      .populate('client', 'name email')
+      .populate('request', 'title service');
+    if (!approach) return res.status(404).json({ success: false, message: 'Approach not found' });
+    res.json({ success: true, approach });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 module.exports = router;
