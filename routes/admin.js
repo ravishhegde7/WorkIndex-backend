@@ -618,6 +618,31 @@ router.post('/tickets/:id/resolve', protect, async (req, res) => {
     ticket.adminNote = req.body.note || '';
     ticket.resolvedAt = new Date();
     await ticket.save();
+
+    // ── Bell notification to user ──
+try {
+  const Notification = safeModel('Notification');
+  if (Notification && ticket.user) {
+    await Notification.create({
+      user:    ticket.user,
+      type:    'admin_action',
+      title:   '✔️ Support Ticket Resolved',
+      message: 'Your support ticket has been marked as resolved by our team.' + (req.body.note ? ' Note: ' + req.body.note : '') + ' Thank you for reaching out.',
+      isRead:  false
+    });
+  }
+} catch (e) {}
+
+// ── Audit log ──
+try {
+  const { logAudit } = require('../utils/audit');
+  logAudit(
+    { id: req.admin._id, role: 'admin', name: req.admin.adminId },
+    'ticket_resolved',
+    { type: 'ticket', id: req.params.id, name: '' },
+    { note: req.body.note || '', ticketId: String(ticket._id) }
+  ).catch(() => {});
+} catch (e) {}
     res.json({ success: true, message: 'Ticket resolved' });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
