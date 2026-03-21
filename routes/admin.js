@@ -1948,8 +1948,38 @@ router.delete('/interests/:id', protect, async (req, res) => {
     const Notification = mongoose.models['Notification'];
     if (!Notification) return res.status(503).json({ success: false, message: 'Notification model not found' });
 
-    const notif = await Notification.findByIdAndDelete(req.params.id);
+    // Fetch before deleting so we have expert + client info
+    const notif = await Notification.findById(req.params.id).lean();
     if (!notif) return res.status(404).json({ success: false, message: 'Invite not found' });
+
+    await Notification.findByIdAndDelete(req.params.id);
+
+    const expertId   = notif.user;
+    const clientName = notif.data?.clientName || 'a client';
+
+    // ── Bell notification to expert ──
+    try {
+      await Notification.create({
+        user:    expertId,
+        type:    'admin_action',
+        title:   '🗑️ Customer Invite Removed',
+        message: 'An invite from ' + clientName + ' has been removed by admin.',
+        isRead:  false
+      });
+    } catch (e) {}
+
+    // ── Audit log ──
+    try {
+      const { logAudit } = require('../utils/audit');
+      const User = mongoose.model('User');
+      const expert = await User.findById(expertId).select('name').lean();
+      logAudit(
+        { id: req.admin._id, role: 'admin', name: req.admin.adminId },
+        'admin_invite_deleted',
+        { type: 'notification', id: req.params.id, name: expert ? expert.name : 'Expert' },
+        { clientName, expertId: String(expertId) }
+      ).catch(() => {});
+    } catch (e) {}
 
     res.json({ success: true, message: 'Invite deleted' });
   } catch (err) {
