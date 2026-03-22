@@ -1874,6 +1874,20 @@ router.post('/tickets/:id/canned', protect, async (req, res) => {
         var oldBal = user.credits || 0;
         user.credits = oldBal + ticket.eligibleCredits;
         await user.save();
+        // ── Bell notification to expert ──
+        try {
+          var Notification = safeModel('Notification');
+          if (Notification) {
+            await Notification.create({
+              user: user._id,
+              type: 'admin_action',
+              title: '✅ Credit Refund Approved',
+              message: ticket.eligibleCredits + ' credits have been refunded to your account. Your support ticket has been resolved.',
+              isRead: false
+            });
+          }
+        } catch(e) {}
+        
         if (CreditTx) {
           await CreditTx.create({
             user: user._id, type: 'refund',
