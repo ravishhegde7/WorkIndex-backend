@@ -280,6 +280,7 @@ router.get('/tickets', protect, async (req, res) => {
     if (!SupportTicket) return res.json({ success: true, tickets: [] });
 
     var tickets = await SupportTicket.find({ user: req.user._id })
+            .select('issueType subject description priority status decision adminNote eligibleCredits creditsRefunded isExpertRefund relatedApproachId createdAt lastFollowUp followUpCount')
       .sort({ createdAt: -1 })
       .limit(20);
     res.json({ success: true, tickets });
