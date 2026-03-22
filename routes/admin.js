@@ -1900,6 +1900,26 @@ router.post('/tickets/:id/canned', protect, async (req, res) => {
       }
     }
 
+        // ── Bell notification for refund rejection (not_eligible) ──
+    if (cannedType === 'not_eligible') {
+      try {
+        var NotifModelReject = safeModel('Notification');
+        if (NotifModelReject && ticket.user) {
+          var rejectUserId = ticket.user._id || ticket.user;
+          await NotifModelReject.create({
+            user: rejectUserId,
+            type: 'admin_action',
+            title: '❌ Refund Request Not Approved',
+            message: 'Your credit refund request has been reviewed and could not be approved at this time. ' +
+                     (note ? 'Admin note: ' + note + ' ' : '') +
+                     'If you believe this is incorrect, please raise a new ticket with additional details.',
+            isRead: false
+          });
+        }
+      } catch(e) {}
+    }
+
+    
     // Update ticket
     var finalStatus = (cannedType === 'under_investigation') ? 'open' : 'resolved';
     ticket.status = finalStatus;
