@@ -1874,6 +1874,27 @@ router.post('/tickets/:id/canned', protect, async (req, res) => {
         var oldBal = user.credits || 0;
         user.credits = oldBal + ticket.eligibleCredits;
         await user.save();
+// Mark the linked approach as refund approved
+        // so client-side count excludes it
+        if (ticket.relatedApproachId) {
+          try {
+            var Approach = require('../models/Approach');
+            await Approach.findByIdAndUpdate(
+              ticket.relatedApproachId,
+              { $set: { refundApproved: true } }
+            );
+            // Also decrement the request's approachCount
+            var linkedApproach = await Approach.findById(ticket.relatedApproachId).select('request').lean();
+            if (linkedApproach && linkedApproach.request) {
+              var Request = require('../models/Request');
+              await Request.findByIdAndUpdate(
+                linkedApproach.request,
+                { $inc: { approachCount: -1, currentApproaches: -1, responseCount: -1 } }
+              );
+            }
+          } catch(e) { console.error('Approach refund mark failed:', e.message); }
+        }
+        
         // ── Bell notification to expert ──
         try {
           var Notification = safeModel('Notification');
