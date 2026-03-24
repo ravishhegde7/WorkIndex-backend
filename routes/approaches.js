@@ -112,9 +112,6 @@ router.post('/', protect, authorize('expert'), async (req, res) => {
         status: 'completed'
       });
     } catch(e) { console.error('CreditTx spend log failed:', e.message); }
-
-    // Increment approach count on request
-    request.approachCount = (request.approachCount || 0) + 1;
     
     // Increment approach count on request
     request.approachCount = (request.approachCount || 0) + 1;
