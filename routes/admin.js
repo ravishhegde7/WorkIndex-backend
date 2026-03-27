@@ -20,6 +20,26 @@ const protect = async (req, res, next) => {
   } catch (e) { res.status(401).json({ success: false, message: 'Invalid token' }); }
 };
 
+function cp(module, action) {
+  return function(req, res, next) {
+    if (req.admin.role === 'super_admin') return next();
+    if (!req.admin.can(module, action)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: requires ' + module + '.' + action + ' permission'
+      });
+    }
+    next();
+  };
+}
+
+function superOnly(req, res, next) {
+  if (req.admin.role !== 'super_admin') {
+    return res.status(403).json({ success: false, message: 'Super admin only' });
+  }
+  next();
+}
+
 function addDateFilter(query, field, from, to) {
   if (from || to) {
     query[field] = {};
@@ -2202,6 +2222,167 @@ router.get('/approaches/:id', protect, async (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
+});
+
+// ===========================================================
+// ADMIN MANAGEMENT (super_admin only)
+// ===========================================================
+
+// GET all admins
+router.get('/admins', protect, superOnly, async (req, res) => {
+  try {
+    var admins = await Admin.find({}).select('-password').sort({ createdAt: -1 });
+    res.json({ success: true, admins });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+// CREATE admin
+router.post('/admins', protect, superOnly, async (req, res) => {
+  try {
+    var { adminId, name, email, password, role, permissions, template } = req.body;
+    if (!adminId || !name || !password) {
+      return res.status(400).json({ success: false, message: 'adminId, name and password are required' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+    }
+    var exists = await Admin.findOne({ adminId });
+    if (exists) return res.status(400).json({ success: false, message: 'adminId already taken' });
+
+    // Resolve permissions — template takes priority over custom permissions
+    var resolvedPerms = {};
+    var tmpl = role === 'super_admin' ? 'super_admin' : (template || role);
+    if (Admin.TEMPLATES[tmpl]) {
+      resolvedPerms = Admin.TEMPLATES[tmpl];
+    } else if (permissions) {
+      resolvedPerms = permissions;
+    } else {
+      resolvedPerms = Admin.TEMPLATES['readonly'];
+    }
+
+    var admin = await Admin.create({
+      adminId, name, email: email || '',
+      password, // pre-save hook hashes it
+      role: role || 'admin',
+      permissions: resolvedPerms,
+      createdBy: req.admin.adminId,
+      isActive: true
+    });
+
+    try {
+      const { logAudit } = require('../utils/audit');
+      logAudit(
+        { id: req.admin._id, role: 'admin', name: req.admin.name },
+        'admin_created',
+        { type: 'admin', id: admin._id, name: admin.name },
+        { role: admin.role, createdAdminId: adminId }
+      ).catch(() => {});
+    } catch(e) {}
+
+    var result = admin.toObject();
+    delete result.password;
+    res.status(201).json({ success: true, message: 'Admin created', admin: result });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+// UPDATE admin permissions / role / status
+router.put('/admins/:id', protect, superOnly, async (req, res) => {
+  try {
+    // Prevent super admin from demoting themselves
+    if (req.params.id === String(req.admin._id) && req.body.role && req.body.role !== 'super_admin') {
+      return res.status(400).json({ success: false, message: 'Cannot change your own role' });
+    }
+
+    var admin = await Admin.findById(req.params.id);
+    if (!admin) return res.status(404).json({ success: false, message: 'Admin not found' });
+
+    var { role, permissions, template, isActive, name, email } = req.body;
+
+    if (name)     admin.name     = name;
+    if (email)    admin.email    = email;
+    if (isActive !== undefined) admin.isActive = isActive;
+
+    if (role) {
+      admin.role = role;
+      // If role changed to super_admin, grant all permissions automatically
+      if (role === 'super_admin') {
+        admin.permissions = Admin.TEMPLATES['super_admin'];
+      }
+    }
+
+    // Apply template if provided
+    if (template && Admin.TEMPLATES[template]) {
+      admin.permissions = Admin.TEMPLATES[template];
+    } else if (permissions) {
+      // Merge custom permissions — only update modules sent
+      Object.keys(permissions).forEach(function(mod) {
+        if (admin.permissions[mod] !== undefined) {
+          admin.permissions[mod] = Object.assign({}, admin.permissions[mod].toObject ? admin.permissions[mod].toObject() : admin.permissions[mod], permissions[mod]);
+        }
+      });
+      admin.markModified('permissions');
+    }
+
+    await admin.save();
+
+    try {
+      const { logAudit } = require('../utils/audit');
+      logAudit(
+        { id: req.admin._id, role: 'admin', name: req.admin.name },
+        'admin_updated',
+        { type: 'admin', id: admin._id, name: admin.name },
+        { role: admin.role, updatedBy: req.admin.adminId }
+      ).catch(() => {});
+    } catch(e) {}
+
+    var result = admin.toObject();
+    delete result.password;
+    res.json({ success: true, message: 'Admin updated', admin: result });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+// DELETE admin
+router.delete('/admins/:id', protect, superOnly, async (req, res) => {
+  try {
+    if (req.params.id === String(req.admin._id)) {
+      return res.status(400).json({ success: false, message: 'Cannot delete your own account' });
+    }
+    var admin = await Admin.findById(req.params.id);
+    if (!admin) return res.status(404).json({ success: false, message: 'Admin not found' });
+
+    await Admin.findByIdAndDelete(req.params.id);
+
+    try {
+      const { logAudit } = require('../utils/audit');
+      logAudit(
+        { id: req.admin._id, role: 'admin', name: req.admin.name },
+        'admin_deleted',
+        { type: 'admin', id: req.params.id, name: admin.name },
+        { deletedAdminId: admin.adminId }
+      ).catch(() => {});
+    } catch(e) {}
+
+    res.json({ success: true, message: 'Admin deleted' });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+// GET permission templates (for frontend dropdown)
+router.get('/admins/templates', protect, superOnly, async (req, res) => {
+  res.json({ success: true, templates: Object.keys(Admin.TEMPLATES) });
+});
+
+// TOGGLE admin active status
+router.post('/admins/:id/toggle', protect, superOnly, async (req, res) => {
+  try {
+    if (req.params.id === String(req.admin._id)) {
+      return res.status(400).json({ success: false, message: 'Cannot deactivate your own account' });
+    }
+    var admin = await Admin.findById(req.params.id);
+    if (!admin) return res.status(404).json({ success: false, message: 'Admin not found' });
+    admin.isActive = !admin.isActive;
+    await admin.save();
+    res.json({ success: true, message: admin.isActive ? 'Admin activated' : 'Admin deactivated', isActive: admin.isActive });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 module.exports = router;
