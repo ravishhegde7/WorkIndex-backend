@@ -69,8 +69,22 @@ router.post('/login', async (req, res) => {
     var match = await admin.matchPassword(password);
     if (!match) return res.status(401).json({ success: false, message: 'Invalid credentials' });
     admin.lastLogin = new Date(); await admin.save();
-    var token = jwt.sign({ id: admin._id, isAdmin: true, role: admin.role }, process.env.JWT_SECRET, { expiresIn: '8h' });
-    res.json({ success: true, token: token, admin: { id: admin._id, name: admin.name, adminId: admin.adminId, role: admin.role } });
+    var token = jwt.sign(
+      { id: admin._id, isAdmin: true, role: admin.role, permissions: admin.permissions },
+      process.env.JWT_SECRET,
+      { expiresIn: '8h' }
+    );
+    res.json({
+      success: true,
+      token: token,
+      admin: {
+        id: admin._id,
+        name: admin.name,
+        adminId: admin.adminId,
+        role: admin.role,
+        permissions: admin.permissions
+      }
+    });
   } catch (err) { res.status(500).json({ success: false, message: 'Login failed' }); }
 });
 
