@@ -235,7 +235,7 @@ router.get('/users/:id', protect, async (req, res) => {
 // ===========================================================
 // NEW: ADJUST USER CREDITS
 // ===========================================================
-router.post('/users/:id/credits', protect, async (req, res) => {
+router.post('/users/:id/credits', protect, cp('credits','write'), async (req, res) => {
   try {
     var User = mongoose.model('User');
     var CreditTx = safeReq('../models/CreditTransaction');
@@ -320,7 +320,7 @@ try {
 // ===========================================================
 // NEW: RESET USER PASSWORD
 // ===========================================================
-router.post('/users/:id/reset-password', protect, async (req, res) => {
+router.post('/users/:id/reset-password', protect, cp('users','write'), async (req, res) => {
   try {
     var User = mongoose.model('User');
     var { newPassword } = req.body;
@@ -544,7 +544,7 @@ router.get('/tickets/:id', protect, async (req, res) => {
 });
 
 // APPROVE REFUND (existing)
-router.post('/tickets/:id/approve', protect, async (req, res) => {
+router.post('/tickets/:id/approve', protect, cp('tickets','write'), async (req, res) => {
   try {
     var Ticket = safeModel('SupportTicket');
     var User = mongoose.model('User');
@@ -600,7 +600,7 @@ try {
 });
 
 // REJECT REFUND (existing)
-router.post('/tickets/:id/reject', protect, async (req, res) => {
+router.post('/tickets/:id/reject', protect, cp('tickets','write'), async (req, res) => {
   try {
     var Ticket = safeModel('SupportTicket');
     if (!Ticket) return res.status(404).json({ success: false });
@@ -641,7 +641,7 @@ try {
 // ===========================================================
 // NEW: RESOLVE TICKET (non-refund tickets)
 // ===========================================================
-router.post('/tickets/:id/resolve', protect, async (req, res) => {
+router.post('/tickets/:id/resolve', protect, cp('tickets','write'), async (req, res) => {
   try {
     var Ticket = safeModel('SupportTicket');
     if (!Ticket) return res.status(404).json({ success: false });
@@ -684,7 +684,7 @@ try {
 // ===========================================================
 // USER ACTION (existing + approve/reject for registrations)
 // ===========================================================
-router.post('/users/:id/action', protect, async (req, res) => {
+router.post('/users/:id/action', protect, cp('users','write'), async (req, res) => {
   try {
     var User = mongoose.model('User');
     var action = req.body.action, reason = req.body.reason;
@@ -793,7 +793,7 @@ router.get('/ratings', protect, async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.delete('/ratings/:id', protect, async (req, res) => {
+router.delete('/ratings/:id', protect, cp('reports','delete'), async (req, res) => {
   try {
     var Rating = safeModel('Rating');
     if (!Rating) return res.status(404).json({ success: false });
@@ -897,7 +897,7 @@ router.get('/requests/:id', protect, async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.put('/requests/:id', protect, async (req, res) => {
+router.put('/requests/:id', protect, cp('requests','write'), async (req, res) => {
   try {
     var Request = mongoose.model('Request');
     var { title, description, status, creditsRequired } = req.body;
@@ -939,7 +939,7 @@ res.json({ success: true, message: 'Post updated', request });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.delete('/requests/:id', protect, async (req, res) => {
+router.delete('/requests/:id', protect, cp('requests','delete'), async (req, res) => {
   try {
     var Request = mongoose.model('Request');
     var request = await Request.findById(req.params.id).populate('client', 'name');
@@ -990,7 +990,7 @@ router.get('/payments/failed', protect, async (req, res) => {
 // ===========================================================
 // NEW: COMMUNICATIONS - BULK EMAIL / HISTORY
 // ===========================================================
-router.post('/communications/send', protect, async (req, res) => {
+router.post('/communications/send', protect, cp('users','write'), async (req, res) => {
   try {
     var User = mongoose.model('User');
     var CommLog = safeModel('CommunicationLog');
@@ -1113,7 +1113,7 @@ router.post('/users/:id/dm', protect, async (req, res) => {
 // ===========================================================
 // NEW: ANNOUNCEMENTS (bell notification to users)
 // ===========================================================
-router.post('/communications/announce', protect, async (req, res) => {
+router.post('/communications/announce', protect, cp('users','write'), async (req, res) => {
   try {
     var User = mongoose.model('User');
     var CommLog = safeModel('CommunicationLog');
@@ -1157,7 +1157,7 @@ router.post('/communications/announce', protect, async (req, res) => {
 // ===========================================================
 // APPROACHES ? UPDATE STATUS & DELETE
 // ===========================================================
-router.put('/approaches/:id', protect, async (req, res) => {
+router.put('/approaches/:id', protect, cp('requests','write'), async (req, res) => {
   try {
     var Approach = safeModel('Approach');
     if (!Approach) return res.status(503).json({ success: false, message: 'Approach model not available' });
@@ -1176,7 +1176,7 @@ router.put('/approaches/:id', protect, async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.delete('/approaches/:id', protect, async (req, res) => {
+router.delete('/approaches/:id', protect, cp('requests','delete'), async (req, res) => {
   try {
     var Approach = safeModel('Approach');
     if (!Approach) return res.status(503).json({ success: false, message: 'Approach model not available' });
@@ -1352,7 +1352,7 @@ router.get('/kyc-requests', protect, async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.post('/kyc/:userId/approve', protect, async (req, res) => {
+router.post('/kyc/:userId/approve', protect, cp('kyc','write'), async (req, res) => {
   try {
     var User = mongoose.model('User');
     await User.findByIdAndUpdate(req.params.userId, {
@@ -1364,7 +1364,7 @@ router.post('/kyc/:userId/approve', protect, async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.post('/kyc/:userId/reject', protect, async (req, res) => {
+router.post('/kyc/:userId/reject', protect, cp('kyc','write'), async (req, res) => {
   try {
     var User = mongoose.model('User');
     var reason = req.body.reason || 'Document unclear or invalid';
@@ -1398,7 +1398,7 @@ router.post('/settings/change-password', protect, async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.post('/settings/danger/:action', protect, async (req, res) => {
+router.post('/settings/danger/:action', protect, superOnly, async (req, res) => {
   try {
     var action = req.params.action;
     var CommLog = safeModel('CommunicationLog');
@@ -1587,7 +1587,7 @@ router.get('/suspended-requests', protect, async (req, res) => {
 // ===========================================================
 // SUSPENDED REQUESTS — RESTORE OR DELETE
 // ===========================================================
-router.post('/suspended-requests/:id/action', protect, async (req, res) => {
+router.post('/suspended-requests/:id/action', protect, cp('requests','write'), async (req, res) => {
   try {
     var Request = mongoose.model('Request');
     var User = mongoose.model('User');
@@ -1859,7 +1859,7 @@ router.get('/revenue', protect, async (req, res) => {
   }
 });
 // CANNED RESPONSES — ticket quick resolve
-router.post('/tickets/:id/canned', protect, async (req, res) => {
+router.post('/tickets/:id/canned', protect, cp('tickets','write'), async (req, res) => {
   try {
     var Ticket = safeModel('SupportTicket');
     var User = mongoose.model('User');
@@ -2110,7 +2110,7 @@ router.get('/audit/target/:id', protect, async (req, res) => {
   }
 });
 
-router.post('/danger/clear-category', protect, async (req, res) => {
+router.post('/danger/clear-category', protect, superOnly, async (req, res) => {
   try {
     const { category } = req.body;
     const Request = mongoose.model('Request');
