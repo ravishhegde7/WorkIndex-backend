@@ -70,7 +70,7 @@ router.post('/login', async (req, res) => {
     if (!match) return res.status(401).json({ success: false, message: 'Invalid credentials' });
     admin.lastLogin = new Date(); await admin.save();
     var token = jwt.sign(
-      { id: admin._id, isAdmin: true, role: admin.role, permissions: admin.permissions },
+      { id: admin._id, isAdmin: true, role: admin.role, permissions: admin.permissions, allowedTabs: admin.allowedTabs || [] },
       process.env.JWT_SECRET,
       { expiresIn: '8h' }
     );
@@ -82,9 +82,11 @@ router.post('/login', async (req, res) => {
         name: admin.name,
         adminId: admin.adminId,
         role: admin.role,
-        permissions: admin.permissions
+        permissions: admin.permissions,
+        allowedTabs: admin.allowedTabs || []
       }
     });
+    
   } catch (err) { res.status(500).json({ success: false, message: 'Login failed' }); }
 });
 
