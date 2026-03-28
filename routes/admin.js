@@ -2161,7 +2161,7 @@ router.post('/interests/:id/complete', protect, cp('requests','write'), async (r
 });
 
 // Reset invite to pending (undo unlock or completion)
-router.post('/interests/:id/reset', protect, async (req, res) => {
+router.post('/interests/:id/reset', protect, cp('requests','write'), async (req, res) => {
   try {
     const Notification = mongoose.models['Notification'];
     if (!Notification) return res.status(503).json({ success: false, message: 'Notification model not found' });
