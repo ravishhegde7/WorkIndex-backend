@@ -31,7 +31,8 @@ const adminSchema = new mongoose.Schema({
   isActive:   { type: Boolean, default: true }
 }, { timestamps: true });
 
-// ── Permission templates ──adminSchema.statics.TEMPLATES = {
+// ── Permission templates ──
+adminSchema.statics.TEMPLATES = {
   super_admin: {
     allowedTabs: [], // empty = all tabs
     permissions: {
