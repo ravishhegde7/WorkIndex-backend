@@ -2276,15 +2276,25 @@ router.post('/admins', protect, superOnly, async (req, res) => {
       resolvedPerms = Admin.TEMPLATES['readonly'];
     }
 
+    // Resolve allowedTabs from template
+    var resolvedTabs = [];
+    if (Admin.TEMPLATES[tmpl] && Admin.TEMPLATES[tmpl].allowedTabs) {
+      resolvedTabs = Admin.TEMPLATES[tmpl].allowedTabs;
+    }
+    if (req.body.allowedTabs && Array.isArray(req.body.allowedTabs)) {
+      resolvedTabs = req.body.allowedTabs;
+    }
+
     var admin = await Admin.create({
       adminId, name, email: email || '',
-      password, // pre-save hook hashes it
+      password,
       role: role || 'admin',
       permissions: resolvedPerms,
+      allowedTabs: resolvedTabs,
       createdBy: req.admin.adminId,
       isActive: true
     });
-
+    
     try {
       const { logAudit } = require('../utils/audit');
       logAudit(
