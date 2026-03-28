@@ -88,21 +88,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/visits', require('./routes/visits'));
 
-app.get('/create-admin', async (req, res) => {
-  try {
-    const Admin = require('./models/Admin');
-    await Admin.deleteMany({}); // clear any broken records
-    await Admin.create({
-      adminId: 'admin_workindex',
-      name: 'WorkIndex Admin',
-      password: 'Admin@1234',
-      role: 'superadmin'
-    });
-    res.json({ message: 'Admin created successfully!' });
-  } catch(e) {
-    res.json({ error: e.message });
-  }
-});
+// Removed /create-admin route — use MongoDB directly or Manage Admins UI
 
 // ═══════════════════════════════════════════════════════════
 // ERROR HANDLING
