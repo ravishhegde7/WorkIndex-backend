@@ -2142,7 +2142,7 @@ router.post('/danger/clear-category', protect, superOnly, async (req, res) => {
 // ─── EXPERT INVITE ACTIONS ────────────────────────────────────────────────────
 
 // Mark invite as completed
-router.post('/interests/:id/complete', protect, async (req, res) => {
+router.post('/interests/:id/complete', protect, cp('requests','write'), async (req, res) => {
   try {
     const Notification = mongoose.models['Notification'];
     if (!Notification) return res.status(503).json({ success: false, message: 'Notification model not found' });
@@ -2180,7 +2180,7 @@ router.post('/interests/:id/reset', protect, async (req, res) => {
 });
 
 // Delete invite permanently
-router.delete('/interests/:id', protect, async (req, res) => {
+router.delete('/interests/:id', protect, cp('requests','delete'), async (req, res) => {
   try {
     const Notification = mongoose.models['Notification'];
     if (!Notification) return res.status(503).json({ success: false, message: 'Notification model not found' });
