@@ -2327,7 +2327,11 @@ router.put('/admins/:id', protect, superOnly, async (req, res) => {
     if (name)     admin.name     = name;
     if (email)    admin.email    = email;
     if (isActive !== undefined) admin.isActive = isActive;
-
+if (req.body.allowedTabs !== undefined) {
+      admin.allowedTabs = req.body.allowedTabs;
+      admin.markModified('allowedTabs');
+    }
+    
     if (role) {
       admin.role = role;
       // If role changed to super_admin, grant all permissions automatically
