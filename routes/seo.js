@@ -192,6 +192,37 @@ async function pushToGitHub(filename, content) {
   return await githubApiPut('/repos/' + GITHUB_REPO + '/contents/' + path, GITHUB_TOKEN, body);
 }
 
+async function updateSitemap(slug) {
+  try {
+    var current = await githubApiGet(
+      '/repos/ravishhegde7/WorkIndex/contents/sitemap.xml',
+      process.env.GITHUB_TOKEN
+    );
+    var content = Buffer.from(current.content, 'base64').toString('utf8');
+    var today = new Date().toISOString().split('T')[0];
+    var newEntry = '\n  <url><loc>https://workindex.co.in/' + slug + '.html</loc><priority>0.7</priority><changefreq>monthly</changefreq><lastmod>' + today + '</lastmod></url>';
+
+    if (content.includes(slug + '.html')) return;
+
+    var updated = content.replace('</urlset>', newEntry + '\n</urlset>');
+
+    var body = JSON.stringify({
+      message: 'Add ' + slug + '.html to sitemap',
+      content: Buffer.from(updated).toString('base64'),
+      sha: current.sha
+    });
+
+    await githubApiPut(
+      '/repos/ravishhegde7/WorkIndex/contents/sitemap.xml',
+      process.env.GITHUB_TOKEN,
+      body
+    );
+    console.log('✅ Sitemap updated with', slug);
+  } catch(e) {
+    console.error('Sitemap update failed (non-fatal):', e.message);
+  }
+}
+
 function githubApiGet(path, token) {
   return new Promise((resolve, reject) => {
     var options = {
