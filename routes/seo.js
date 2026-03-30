@@ -308,6 +308,7 @@ router.post('/pages', protect, superOnly, async (req, res) => {
       return res.status(500).json({ success: false, message: 'GITHUB_TOKEN not set in Railway env vars' });
     }
     await pushToGitHub(data.slug + '.html', html);
+     await updateSitemap(data.slug); // ← auto-updates sitemap.xml
 
     // Save record in MongoDB
     var existing = await SeoPage.findOne({ slug: data.slug });
