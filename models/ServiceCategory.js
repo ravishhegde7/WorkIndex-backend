@@ -1,9 +1,8 @@
-const mongoose = require('mongoose');
-
-// ── Question option schema ──
 const OptionSchema = new mongoose.Schema({
   value: { type: String, required: true },
-  label: { type: String, required: true }
+  label: { type: String, required: true },
+  icon:  { type: String },
+  desc:  { type: String }
 }, { _id: false });
 
 // ── Question schema ──
