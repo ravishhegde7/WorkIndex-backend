@@ -10,11 +10,23 @@ const OptionSchema = new mongoose.Schema({
 const QuestionSchema = new mongoose.Schema({
   id:          { type: String, required: true },  // e.g. 'itrTaxpayerType'
   question:    { type: String, required: true },
-  type:        { type: String, enum: ['radio', 'checkbox', 'text', 'textarea', 'select'], default: 'radio' },
+  type:        { type: String, enum: ['radio', 'checkbox', 'text', 'textarea', 'select', 'address', 'slider', 'pincode'], default: 'radio' },
   required:    { type: Boolean, default: true },
   alias:       { type: String },                   // e.g. 'urgency' for timeline mapping
   options:     [OptionSchema],
-  placeholder: { type: String }
+  placeholder: { type: String },
+  placeholder:   { type: String },
+  subtitle:      { type: String },
+  sliderMin:     { type: Number },
+  sliderMax:     { type: Number },
+  sliderStep:    { type: Number },
+  sliderDefault: { type: Number },
+  sliderFormat:  { type: String },
+  minLength:     { type: Number },
+  maxLength:     { type: Number },
+  validation:    { type: String },
+  useServiceList:{ type: Boolean },
+  addressFields: { type: mongoose.Schema.Types.Mixed }
 }, { _id: false });
 
 // ── Main ServiceCategory schema ──
