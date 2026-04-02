@@ -898,4 +898,7 @@ router.post('/seed-expert', protect, superOnly, async (req, res) => {
   }
 });
 
+POST /api/admin/service-categories/seed-common
+  POST /api/admin/service-categories/seed-expert
+
 module.exports = router;
