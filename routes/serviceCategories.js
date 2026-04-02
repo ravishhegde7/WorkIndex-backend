@@ -691,7 +691,7 @@ router.post('/seed-common', protect, superOnly, async (req, res) => {
  
     const commonSteps = await ServiceCategory.create({
       value: '_common', label: 'Common Steps', icon: '🔗', color: '#6366f1',
-      creditCost: 0, maxApproaches: 0, sortOrder: 100, isActive: true,
+      creditCost: 1, maxApproaches: 1, sortOrder: 100, isActive: true,
       questions: [
         {
           id: 'service_location_type', question: 'Where do you need the service?', type: 'radio', required: true,
