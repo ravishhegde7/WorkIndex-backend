@@ -116,19 +116,209 @@ function generateServicesConfig(categories) {
     maxApproaches[c.value] = c.maxApproaches || 5;
   });
 
-  // Build questionnaire map
-  const questionnaire = {};
+   // ── Build nested questionnaire structure ──
+  const byService = {};
   categories.forEach(c => {
-    questionnaire[c.value] = (c.questions || []).map(q => ({
+    byService[c.value] = (c.questions || []).map(q => ({
       id:          q.id,
-      question:    q.question,
-      type:        q.type,
+      key:         q.id,   // key = id for service-specific questions
+      type:        q.type === 'radio'    ? 'single' :
+                   q.type === 'checkbox' ? 'multi'  : q.type,
+      title:       q.question,
       required:    q.required,
       ...(q.alias       ? { alias: q.alias }             : {}),
       ...(q.placeholder ? { placeholder: q.placeholder } : {}),
-      options: (q.options || []).map(o => ({ value: o.value, label: o.label }))
+      options: (q.options || []).map(o => ({
+        value: o.value,
+        label: o.label
+      }))
     }));
   });
+ 
+  const questionnaire = `  questionnaire: {
+ 
+    serviceSelection: {
+      id: 'service', key: 'service',
+      type: 'service-picker', required: true,
+      title: 'What service do you need?',
+      subtitle: 'Select the category that best matches your requirement',
+      useServiceList: true,
+    },
+ 
+    byService: ${JSON.stringify(byService, null, 6)},
+ 
+    common: {
+      serviceLocationType: {
+        id: 'service_location_type', key: 'serviceLocationType',
+        type: 'single', required: true,
+        title: 'Where do you need the service?',
+        options: [
+          { value: 'online',              label: 'Online / Remotely',          icon: '💻' },
+          { value: 'my-location',         label: 'At my location',             icon: '🏠' },
+          { value: 'professional-office', label: 'At professional office',     icon: '🏢' },
+        ],
+      },
+      fullAddress: {
+        id: 'full_address', key: 'fullAddress',
+        type: 'address', required: true,
+        title: 'Enter your address',
+        fields: [
+          { key: 'building', label: 'Flat / Building / House No.', placeholder: 'e.g. 4B, Sunrise Apartments', required: true },
+          { key: 'area',     label: 'Area / Street / Locality',    placeholder: 'e.g. Koramangala 5th Block',  required: true },
+          { key: 'pincode',  label: 'Pincode',                     placeholder: 'e.g. 560095',                required: true, type: 'pincode' },
+          { key: 'city',     label: 'City',                        placeholder: 'e.g. Bengaluru',             required: true },
+          { key: 'state',    label: 'State',                       placeholder: 'e.g. Karnataka',             required: true },
+          { key: 'landmark', label: 'Landmark (optional)',         placeholder: 'e.g. Near Indiranagar metro', required: false },
+        ],
+      },
+      clientLocation: {
+        id: 'client_location', key: 'clientLocation',
+        type: 'address-simple', required: true,
+        title: 'Where are you based?',
+        fields: [
+          { key: 'pincode', label: 'Pincode', placeholder: 'e.g. 560095', required: true, type: 'pincode' },
+          { key: 'city',    label: 'City',    placeholder: 'e.g. Bengaluru', required: true },
+          { key: 'state',   label: 'State',   placeholder: 'e.g. Karnataka', required: true },
+        ],
+      },
+      urgency: {
+        id: 'urgency', key: 'urgency',
+        type: 'single', required: true,
+        title: 'When do you need this done?',
+        options: [
+          { value: 'immediate', label: 'Immediately (within 24 hours)', icon: '🔴' },
+          { value: '2-3days',   label: 'Within 2–3 days',               icon: '🟠' },
+          { value: 'week',      label: 'Within a week',                  icon: '🟡' },
+          { value: 'month',     label: 'Within a month',                 icon: '🟢' },
+          { value: 'flexible',  label: 'Flexible / No rush',             icon: '🔵' },
+        ],
+      },
+      budget: {
+        id: 'budget', key: 'budget',
+        type: 'budget', required: false,
+        title: 'What is your budget?',
+        min: 100, max: 500000, step: 100, currency: '₹',
+        placeholder: 'Enter your budget in ₹',
+      },
+      description: {
+        id: 'description', key: 'description',
+        type: 'textarea', required: true,
+        title: 'Describe your requirement',
+        placeholder: 'Please describe what you need in detail...',
+        minLength: 20,
+      },
+      preferredProfessional: {
+        id: 'preferred_professional', key: 'preferredProfessional',
+        type: 'single', required: false,
+        title: 'What type of professional do you prefer?',
+        options: [
+          { value: 'individual_ca', label: 'Individual CA / Freelancer', icon: '👤' },
+          { value: 'firm',          label: 'CA Firm / Agency',           icon: '🏢' },
+          { value: 'no_preference', label: 'No preference',              icon: '🤷' },
+        ],
+      },
+      contactMethod: {
+        id: 'contact_method', key: 'contactMethod',
+        type: 'single', required: true,
+        title: 'How should professionals contact you?',
+        options: [
+          { value: 'platform_chat', label: 'Chat on WorkIndex',     icon: '💬' },
+          { value: 'phone',         label: 'Phone call / WhatsApp', icon: '📞' },
+          { value: 'email',         label: 'Email',                  icon: '✉️' },
+          { value: 'any',           label: 'Any method is fine',     icon: '✅' },
+        ],
+      },
+    },
+ 
+    expert: [
+      {
+        id: 'expert_services', key: 'servicesOffered',
+        type: 'multi', required: true,
+        title: 'What services do you offer?',
+        useServiceList: true,
+      },
+      {
+        id: 'expert_specialization', key: 'specialization',
+        type: 'single', required: true,
+        title: 'What is your primary specialization?',
+        options: [
+          { value: 'Chartered Accountant', label: 'Chartered Accountant (CA)', icon: '🎓' },
+          { value: 'Cost Accountant',       label: 'Cost Accountant (CMA)',     icon: '🎓' },
+          { value: 'Tax Consultant',        label: 'Tax Consultant',            icon: '📄' },
+          { value: 'GST Consultant',        label: 'GST Consultant',            icon: '🧾' },
+          { value: 'Bookkeeper',            label: 'Bookkeeper / Accountant',   icon: '📊' },
+          { value: 'Photographer',         label: 'Photographer',              icon: '📷' },
+          { value: 'Web Developer',        label: 'Web / App Developer',       icon: '💻' },
+          { value: 'Other',                label: 'Other Professional',         icon: '🔧' },
+        ],
+      },
+      {
+        id: 'expert_experience', key: 'yearsOfExperience',
+        type: 'single', required: true,
+        title: 'How many years of experience do you have?',
+        options: [
+          { value: '0-1',  label: 'Less than 1 year',   icon: '🌱' },
+          { value: '1-3',  label: '1 – 3 years',        icon: '📈' },
+          { value: '3-5',  label: '3 – 5 years',        icon: '📈' },
+          { value: '5-10', label: '5 – 10 years',       icon: '⭐' },
+          { value: '10+',  label: 'More than 10 years', icon: '🏆' },
+        ],
+      },
+      {
+        id: 'expert_location', key: 'serviceLocationType',
+        type: 'single', required: true,
+        title: 'Where do you prefer to work?',
+        options: [
+          { value: 'online', label: 'Online / Remotely only',      icon: '💻' },
+          { value: 'local',  label: 'Local (in-person preferred)', icon: '📍' },
+          { value: 'both',   label: 'Both online and in-person',  icon: '🌐' },
+        ],
+      },
+      {
+        id: 'expert_city', key: 'city',
+        type: 'single', required: true,
+        title: 'Which city are you based in?',
+        options: [], placeholder: 'Enter your city', isTextInput: true,
+      },
+      {
+        id: 'expert_state', key: 'state',
+        type: 'single', required: true,
+        title: 'Which state are you in?',
+        options: [
+          { value: 'Karnataka',      label: 'Karnataka' },
+          { value: 'Maharashtra',    label: 'Maharashtra' },
+          { value: 'Tamil Nadu',     label: 'Tamil Nadu' },
+          { value: 'Delhi',          label: 'Delhi' },
+          { value: 'Telangana',      label: 'Telangana' },
+          { value: 'Gujarat',        label: 'Gujarat' },
+          { value: 'Rajasthan',      label: 'Rajasthan' },
+          { value: 'West Bengal',    label: 'West Bengal' },
+          { value: 'Uttar Pradesh',  label: 'Uttar Pradesh' },
+          { value: 'Kerala',         label: 'Kerala' },
+          { value: 'Andhra Pradesh', label: 'Andhra Pradesh' },
+          { value: 'Punjab',         label: 'Punjab' },
+          { value: 'Haryana',        label: 'Haryana' },
+          { value: 'Madhya Pradesh', label: 'Madhya Pradesh' },
+          { value: 'Bihar',          label: 'Bihar' },
+          { value: 'Other',          label: 'Other' },
+        ],
+      },
+      {
+        id: 'expert_pincode', key: 'pincode',
+        type: 'single', required: true,
+        title: 'What is your pincode?',
+        options: [], placeholder: 'Enter 6-digit pincode', isTextInput: true,
+      },
+      {
+        id: 'expert_bio', key: 'bio',
+        type: 'textarea', required: true,
+        title: 'Tell clients about yourself',
+        placeholder: 'e.g. I am a CA with 8 years of experience...',
+        minLength: 50,
+      },
+    ],
+ 
+  },`;
 
   // Build answerTagFormatters — simple string-based representation
   // (Runtime eval not used — we generate a static JS object)
