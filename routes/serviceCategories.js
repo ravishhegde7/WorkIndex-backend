@@ -801,7 +801,7 @@ router.post('/seed-expert', protect, superOnly, async (req, res) => {
  
     const expertSteps = await ServiceCategory.create({
       value: '_expert', label: 'Expert Onboarding Steps', icon: '⭐', color: '#f59e0b',
-      creditCost: 0, maxApproaches: 0, sortOrder: 101, isActive: true,
+      creditCost: 1, maxApproaches: 1, sortOrder: 101, isActive: true,
       questions: [
         {
           id: 'expert_services', question: 'What services do you offer?', type: 'checkbox', required: true,
