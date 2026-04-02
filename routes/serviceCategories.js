@@ -898,7 +898,56 @@ router.post('/seed-expert', protect, superOnly, async (req, res) => {
   }
 });
 
-POST /api/admin/service-categories/seed-common
-  POST /api/admin/service-categories/seed-expert
+// SEED COMMON STEPS (location, urgency, budget, description, etc.)
+// POST /api/admin/service-categories/seed-common
+router.post('/seed-common', protect, superOnly, async (req, res) => {
+  try {
+    // Common steps are hardcoded in generateServicesConfig()
+    // They are NOT stored in MongoDB — they're baked into the generator.
+    // This endpoint just regenerates and pushes the current config,
+    // which already includes all common steps.
+    let githubPushed = false;
+    try {
+      await syncToGitHub();
+      githubPushed = true;
+    } catch(e) {
+      console.error('GitHub push failed (non-fatal):', e.message);
+    }
+    res.json({
+      success: true,
+      message: 'Common steps are built into the generator and included in every sync.' +
+        (githubPushed ? ' services-config.js pushed to GitHub.' : ' GitHub push failed — check GITHUB_TOKEN.'),
+      githubPushed
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+ 
+ 
+// SEED EXPERT STEPS
+// POST /api/admin/service-categories/seed-expert
+router.post('/seed-expert', protect, superOnly, async (req, res) => {
+  try {
+    // Expert steps are hardcoded in generateServicesConfig()
+    // They are NOT stored in MongoDB — they're baked into the generator.
+    // This endpoint just regenerates and pushes the current config.
+    let githubPushed = false;
+    try {
+      await syncToGitHub();
+      githubPushed = true;
+    } catch(e) {
+      console.error('GitHub push failed (non-fatal):', e.message);
+    }
+    res.json({
+      success: true,
+      message: 'Expert onboarding steps are built into the generator and included in every sync.' +
+        (githubPushed ? ' services-config.js pushed to GitHub.' : ' GitHub push failed — check GITHUB_TOKEN.'),
+      githubPushed
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 module.exports = router;
