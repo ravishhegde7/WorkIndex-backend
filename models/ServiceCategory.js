@@ -38,8 +38,8 @@ const ServiceCategorySchema = new mongoose.Schema({
   color:       { type: String, default: '#FC8019' },
 
   // Marketplace settings
-  creditCost:     { type: Number, default: 20, min: 1 },
-  maxApproaches:  { type: Number, default: 5,  min: 1 },
+  creditCost:     { type: Number, default: 20, min: 0 },
+  maxApproaches:  { type: Number, default: 5,  min: 0 },
   isActive:       { type: Boolean, default: true },
 
   // Questionnaire steps
