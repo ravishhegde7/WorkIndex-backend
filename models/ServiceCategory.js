@@ -13,7 +13,6 @@ const QuestionSchema = new mongoose.Schema({
   required:    { type: Boolean, default: true },
   alias:       { type: String },                   // e.g. 'urgency' for timeline mapping
   options:     [OptionSchema],
-  placeholder: { type: String },
   placeholder:   { type: String },
   subtitle:      { type: String },
   sliderMin:     { type: Number },
