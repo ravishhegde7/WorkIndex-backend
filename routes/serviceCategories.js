@@ -232,8 +232,10 @@ function buildCommonSection(commonCat) {
     obj[q.id] = built;
   });
   return JSON.stringify(obj, null, 4);
+}
  
 // ── Build expert section from DB _expert doc ─────────────────
+
 // Returns a JSON *string* of an array
 function buildExpertSection(expertCat) {
   if (!expertCat || !(expertCat.questions || []).length) {
