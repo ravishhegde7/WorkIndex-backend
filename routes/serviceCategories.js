@@ -144,8 +144,8 @@ function buildCommonSection(commonCat) {
   if (!commonCat || !(commonCat.questions || []).length) {
     // Hardcoded fallback — only used if _common doc doesn't exist in DB
     return JSON.stringify({
-      serviceLocationType: {
-        id:'service_location_type', key:'serviceLocationType', type:'single', required:true,
+      service_location_type: {
+        id:'service_location_type', key:'service_location_type', type:'single', required:true,
         title:'Where do you need the service?',
         options:[
           {value:'online',              label:'Online / Remotely',        icon:'💻', desc:'Share documents digitally'},
