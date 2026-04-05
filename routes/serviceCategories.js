@@ -153,8 +153,8 @@ function buildCommonSection(commonCat) {
           {value:'professional-office', label:"At professional's office", icon:'🏢', desc:'I visit their office'},
         ],
       },
-      fullAddress: {
-        id:'full_address', key:'fullAddress', type:'address', required:true,
+      full_address: {
+        id:'full_address', key:'full_address', type:'address', required:true,
         title:'Enter your address',
         fields:{
           building:{label:'Flat / Building / House No.',placeholder:'e.g. 4B, Sunrise Apartments',required:true},
@@ -198,8 +198,8 @@ function buildCommonSection(commonCat) {
         placeholder:'Please describe what you need in detail...',
         minLength:20, maxLength:1000, validation:'Minimum 20 characters required',
       },
-      preferredProfessional: {
-        id:'preferred_professional', key:'preferredProfessional', type:'single', required:false,
+      preferred_professional: {
+        id:'preferred_professional', key:'preferred_professional', type:'single', required:false,
         title:'What type of professional do you prefer?',
         options:[
           {value:'individual_ca',label:'Individual CA / Freelancer',icon:'👤',desc:'Personal attention, often more affordable'},
@@ -207,8 +207,8 @@ function buildCommonSection(commonCat) {
           {value:'no_preference',label:'No preference',             icon:'🤷',desc:'Best quote wins'},
         ],
       },
-      contactMethod: {
-        id:'contact_method', key:'contactMethod', type:'single', required:true,
+      contact_method: {
+        id:'contact_method', key:'contact_method', type:'single', required:true,
         title:'How should professionals contact you?',
         options:[
           {value:'platform_chat',label:'Chat on WorkIndex',    icon:'💬',desc:'Professionals message you here'},
