@@ -228,12 +228,10 @@ function buildCommonSection(commonCat) {
     if (q.type === 'address' || q.type === 'address-simple') {
       built.fields = q.addressFields || {};
     }
-    // Use the question's alias as the key if present, otherwise use id
-    const key = q.alias || q.id;
-    obj[key] = built;
+    // Always use the question's id as the key (snake_case) so frontend can find it
+    obj[q.id] = built;
   });
   return JSON.stringify(obj, null, 4);
-}
  
 // ── Build expert section from DB _expert doc ─────────────────
 // Returns a JSON *string* of an array
