@@ -546,11 +546,24 @@ router.post('/seed', protect, superOnly, async (req, res) => {
             { value: '20L-50L',  label: '₹20 – ₹50 Lakhs' },
             { value: 'above50L', label: 'Above ₹50 Lakhs' }
           ]},
-          { id: 'itrUrgency', question: 'When do you need it filed?', type: 'radio', required: true, alias: 'urgency', options: [
-            { value: 'immediate', label: '🔴 Immediately (within 24 hours)' },
-            { value: '2-3days',   label: '🟠 Within 2–3 days' },
-            { value: 'week',      label: '🟡 Within a week' },
-            { value: 'flexible',  label: '🔵 Flexible / Before deadline' }
+          { id: 'itrIncomeSources', question: 'Sources of income', type: 'checkbox', required: true, subtitle: 'Select all that apply', options: [
+            { value: 'salary',   label: 'Salary' },
+            { value: 'business', label: 'Business income' },
+            { value: 'rental',   label: 'Rental income' },
+            { value: 'capital',  label: 'Capital gains' },
+            { value: 'foreign',  label: 'Foreign income' },
+            { value: 'interest', label: 'Interest income' },
+            { value: 'other',    label: 'Other' }
+          ]},
+          { id: 'itrFilingType', question: 'Filing requirement', type: 'radio', required: true, subtitle: 'What type of return do you need?', options: [
+            { value: 'current',  label: 'Current year return' },
+            { value: 'previous', label: 'Previous year return' },
+            { value: 'revised',  label: 'Revised return' },
+            { value: 'notice',   label: 'Tax notice handling' }
+          ]},
+          { id: 'itrTaxPlanning', question: 'Need tax planning advice?', type: 'radio', required: true, options: [
+            { value: 'yes', label: '✅ Yes, I need tax planning advice' },
+            { value: 'no',  label: '❌ No, just file my return' }
           ]}
         ]
       },
@@ -560,11 +573,19 @@ router.post('/seed', protect, superOnly, async (req, res) => {
         searchAliases: 'gst,gst services',
         questions: [
           { id: 'gstServiceType', question: 'What GST service do you need?', type: 'radio', required: true, options: [
-            { value: 'new_registration', label: '📋 New GST Registration' },
-            { value: 'monthly_filing',   label: '📊 Monthly GSTR Filing' },
-            { value: 'annual_return',    label: '📁 Annual GST Return (GSTR-9)' },
-            { value: 'notice_handling',  label: '⚠️ GST Notice / Scrutiny' },
+            { value: 'new_registration',   label: '📋 New GST Registration' },
+            { value: 'monthly_filing',     label: '📊 Monthly GSTR Filing' },
+            { value: 'annual_return',      label: '📁 Annual GST Return (GSTR-9)' },
+            { value: 'notice_handling',    label: '⚠️ GST Notice / Scrutiny' },
             { value: 'itc_reconciliation', label: '🔁 ITC Reconciliation' }
+          ]},
+          { id: 'gstBusinessType', question: 'Business type', type: 'radio', required: true, subtitle: 'Select your business structure', options: [
+            { value: 'proprietorship', label: 'Proprietorship' },
+            { value: 'partnership',    label: 'Partnership' },
+            { value: 'llp',            label: 'LLP' },
+            { value: 'pvt_ltd',        label: 'Private Limited Company' },
+            { value: 'opc',            label: 'OPC (One Person Company)' },
+            { value: 'other',          label: 'Other' }
           ]},
           { id: 'gstTurnover', question: 'What is your monthly business turnover?', type: 'radio', required: true, options: [
             { value: 'below5L',  label: 'Below ₹5 Lakhs' },
@@ -572,11 +593,9 @@ router.post('/seed', protect, superOnly, async (req, res) => {
             { value: '20L-50L',  label: '₹20 – ₹50 Lakhs' },
             { value: 'above50L', label: 'Above ₹50 Lakhs' }
           ]},
-          { id: 'gstUrgency', question: 'When do you need this?', type: 'radio', required: true, alias: 'urgency', options: [
-            { value: 'immediate', label: '🔴 Immediately' },
-            { value: '2-3days',   label: '🟠 Within 2–3 days' },
-            { value: 'week',      label: '🟡 This week' },
-            { value: 'flexible',  label: '🔵 Flexible' }
+          { id: 'gstExisting', question: 'Do you already have a GSTIN?', type: 'radio', required: true, options: [
+            { value: 'yes', label: '✅ Yes, I have GSTIN' },
+            { value: 'no',  label: '❌ No, need new registration' }
           ]}
         ]
       },
@@ -585,6 +604,14 @@ router.post('/seed', protect, superOnly, async (req, res) => {
         creditCost: 20, maxApproaches: 5, sortOrder: 3,
         searchAliases: 'accounting,bookkeeping',
         questions: [
+          { id: 'accountingBusinessType', question: 'Business type', type: 'radio', required: true, subtitle: 'Select your business structure', options: [
+            { value: 'proprietorship', label: 'Proprietorship' },
+            { value: 'partnership',    label: 'Partnership' },
+            { value: 'llp',            label: 'LLP' },
+            { value: 'pvt_ltd',        label: 'Private Limited Company' },
+            { value: 'opc',            label: 'OPC' },
+            { value: 'other',          label: 'Other' }
+          ]},
           { id: 'accountingServiceType', question: 'What accounting service do you need?', type: 'radio', required: true, options: [
             { value: 'bookkeeping',     label: '📚 Monthly Bookkeeping' },
             { value: 'payroll',         label: '👥 Payroll Processing' },
@@ -595,6 +622,14 @@ router.post('/seed', protect, superOnly, async (req, res) => {
             { value: 'monthly',   label: '📅 Monthly (ongoing)' },
             { value: 'quarterly', label: '🗓️ Quarterly' },
             { value: 'annual',    label: '📆 One-time / Annual' }
+          ]},
+          { id: 'accountingSoftware', question: 'Accounting software used', type: 'radio', required: true, subtitle: 'Which software do you currently use?', options: [
+            { value: 'tally',      label: 'Tally' },
+            { value: 'zoho',       label: 'Zoho Books' },
+            { value: 'quickbooks', label: 'QuickBooks' },
+            { value: 'busy',       label: 'Busy' },
+            { value: 'none',       label: 'None / Manual' },
+            { value: 'other',      label: 'Other' }
           ]},
           { id: 'accountingTransactions', question: 'How many transactions per month approximately?', type: 'radio', required: true, options: [
             { value: 'below50',  label: 'Below 50' },
@@ -615,12 +650,21 @@ router.post('/seed', protect, superOnly, async (req, res) => {
             { value: 'internal_audit',  label: '🔍 Internal Audit' },
             { value: 'gst_audit',       label: '🧾 GST Audit' }
           ]},
+          { id: 'auditOrgType', question: 'Organization type', type: 'radio', required: true, subtitle: 'Select your business structure', options: [
+            { value: 'proprietorship', label: 'Proprietorship' },
+            { value: 'partnership',    label: 'Partnership' },
+            { value: 'llp',            label: 'LLP' },
+            { value: 'pvt_ltd',        label: 'Private Limited Company' },
+            { value: 'public',         label: 'Public Limited Company' },
+            { value: 'other',          label: 'Other' }
+          ]},
           { id: 'auditTurnover', question: 'What is your annual business turnover?', type: 'radio', required: true, options: [
             { value: 'below1Cr',  label: 'Below ₹1 Crore' },
             { value: '1Cr-5Cr',   label: '₹1 – ₹5 Crore' },
             { value: '5Cr-20Cr',  label: '₹5 – ₹20 Crore' },
             { value: 'above20Cr', label: 'Above ₹20 Crore' }
-          ]}
+          ]},
+          { id: 'auditDeadline', question: 'Audit deadline', type: 'text', required: true, subtitle: 'When do you need the audit completed?', placeholder: 'e.g. March 31, 2026' }
         ]
       },
       {
@@ -635,11 +679,16 @@ router.post('/seed', protect, superOnly, async (req, res) => {
             { value: 'corporate',   label: '🏢 Corporate / Event' },
             { value: 'real_estate', label: '🏠 Real Estate / Architecture' }
           ]},
-          { id: 'photographyDuration', question: 'How long is the shoot?', type: 'radio', required: true, alias: 'urgency', options: [
-            { value: '1-2hours',  label: '1–2 hours' },
+          { id: 'photographyEventDate', question: 'Event / shoot date', type: 'text', required: true, subtitle: 'When is your event or photoshoot?', placeholder: 'e.g. 15 May 2026' },
+          { id: 'photographyDuration', question: 'How long is the shoot?', type: 'radio', required: true, options: [
+            { value: 'few-hours', label: 'Few hours' },
             { value: 'half-day',  label: 'Half day (3–5 hours)' },
             { value: 'full-day',  label: 'Full day' },
-            { value: 'multi-day', label: 'Multiple days' }
+            { value: 'multiple',  label: 'Multiple days' }
+          ]},
+          { id: 'photographyVideography', question: 'Need videography also?', type: 'radio', required: true, options: [
+            { value: 'yes', label: '🎥 Yes, include videography' },
+            { value: 'no',  label: '📷 No, photography only' }
           ]}
         ]
       },
@@ -657,11 +706,29 @@ router.post('/seed', protect, superOnly, async (req, res) => {
             { value: 'redesign',    label: '🎨 Website Redesign / Revamp' },
             { value: 'maintenance', label: '🔧 Maintenance / Bug Fix' }
           ]},
-          { id: 'devTimeline', question: 'What is your project timeline?', type: 'radio', required: true, alias: 'urgency', options: [
-            { value: 'immediate', label: '🔴 ASAP (within 1 week)' },
-            { value: '2-3days',   label: '🟠 Within 2–4 weeks' },
-            { value: 'month',     label: '🟡 1–3 months' },
+          { id: 'devProjectStage', question: 'Project stage', type: 'radio', required: true, subtitle: 'What stage is your project at?', options: [
+            { value: 'idea',         label: 'Idea stage' },
+            { value: 'requirements', label: 'Requirements defined' },
+            { value: 'design-ready', label: 'Design ready' },
+            { value: 'partial',      label: 'Partially developed' },
+            { value: 'upgrade',      label: 'Existing system upgrade' }
+          ]},
+          { id: 'devPlatform', question: 'Platform needed', type: 'checkbox', required: true, subtitle: 'Which platforms should it support?', options: [
+            { value: 'android',        label: 'Android' },
+            { value: 'ios',            label: 'iOS' },
+            { value: 'web',            label: 'Web' },
+            { value: 'cross-platform', label: 'Cross-platform' },
+            { value: 'not-sure',       label: 'Not sure yet' }
+          ]},
+          { id: 'devTimeline', question: 'What is your project timeline?', type: 'radio', required: true, options: [
+            { value: 'asap',      label: '🔴 ASAP (within 1 week)' },
+            { value: '1-2months', label: '🟠 1–2 months' },
+            { value: '3-6months', label: '🟡 3–6 months' },
             { value: 'flexible',  label: '🔵 Flexible' }
+          ]},
+          { id: 'devMaintenance', question: 'Need ongoing maintenance?', type: 'radio', required: true, options: [
+            { value: 'yes', label: '✅ Yes, need maintenance support' },
+            { value: 'no',  label: '❌ No, just build and handover' }
           ]}
         ]
       }
