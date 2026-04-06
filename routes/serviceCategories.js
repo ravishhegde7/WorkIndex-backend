@@ -95,7 +95,7 @@ function githubApiPut(path, token, body) {
 // ── Convert a stored question to services-config.js format ──
 function buildQuestion(q) {
   const typeMap = { radio: 'single', checkbox: 'multi', text: 'text',
-                    textarea: 'textarea', select: 'single',
+                    date: 'date', textarea: 'textarea', select: 'single',
                     address: 'address', slider: 'slider', pincode: 'pincode' };
   const out = {
     id:       q.id,
@@ -680,7 +680,7 @@ router.post('/seed', protect, superOnly, async (req, res) => {
             { value: '5Cr-20Cr',  label: '₹5 – ₹20 Crore' },
             { value: 'above20Cr', label: 'Above ₹20 Crore' }
           ]},
-          { id: 'auditDeadline', question: 'Audit deadline', type: 'text', required: true, subtitle: 'When do you need the audit completed?', placeholder: 'e.g. March 31, 2026' }
+          { id: 'auditDeadline', question: 'Audit deadline', type: 'date', required: true, subtitle: 'When do you need the audit completed?' }
         ]
       },
       {
@@ -695,7 +695,7 @@ router.post('/seed', protect, superOnly, async (req, res) => {
             { value: 'corporate',   label: '🏢 Corporate / Event' },
             { value: 'real_estate', label: '🏠 Real Estate / Architecture' }
           ]},
-          { id: 'photographyEventDate', question: 'Event / shoot date', type: 'text', required: true, subtitle: 'When is your event or photoshoot?', placeholder: 'e.g. 15 May 2026' },
+          { id: 'photographyEventDate', question: 'Event / shoot date', type: 'date', required: true, subtitle: 'When is your event or photoshoot?' },
           { id: 'photographyDuration', question: 'How long is the shoot?', type: 'radio', required: true, options: [
             { value: 'few-hours', label: 'Few hours' },
             { value: 'half-day',  label: 'Half day (3–5 hours)' },
