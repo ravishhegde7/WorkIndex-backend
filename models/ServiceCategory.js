@@ -12,7 +12,9 @@ const OptionSchema = new mongoose.Schema({
 const QuestionSchema = new mongoose.Schema({
   id:          { type: String, required: true },  // e.g. 'itrTaxpayerType'
   question:    { type: String, required: true },
-  type:        { type: String, enum: ['radio', 'checkbox', 'text', 'textarea', 'select', 'address', 'address-simple', 'slider', 'pincode'], default: 'radio' },
+  type: {
+  type: String,
+  enum: ['radio', 'checkbox', 'text', 'date', 'textarea', 'select', 'address', 'slider', 'pincode'], default: 'radio' },
   required:    { type: Boolean, default: true },
   alias:       { type: String },                   // e.g. 'urgency' for timeline mapping
   options:     [OptionSchema],
