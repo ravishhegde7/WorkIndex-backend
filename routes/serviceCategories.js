@@ -11,7 +11,7 @@
  * FIX 2: generateServicesConfig() now reads _common and _expert docs from
  *         the DB instead of using hardcoded fallbacks.
  */
- 
+
 const express  = require('express');
 const router   = express.Router();
 const jwt      = require('jsonwebtoken');
