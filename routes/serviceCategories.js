@@ -224,11 +224,27 @@ function buildCommonSection(commonCat) {
   const obj = {};
   (commonCat.questions || []).forEach(q => {
     const built = buildQuestion(q);
-    // For address types, preserve the nested fields object from DB
-    if (q.type === 'address' || q.type === 'address-simple') {
-      built.fields = q.addressFields || {};
-    }
     // Always use the question's id as the key (snake_case) so frontend can find it
+    // Hardcode correct addressFields based on ID — never trust what admin saves for address types
+    if (q.id === 'full_address') {
+      built.type = 'address';
+      built.fields = {
+        building: { label: 'Flat / Building / House No.', placeholder: 'e.g. 4B, Sunrise Apartments', required: true },
+        area:     { label: 'Area / Locality',             placeholder: 'e.g. Koramangala 5th Block',  required: true },
+        city:     { label: 'City',                        placeholder: 'e.g. Bengaluru',              required: true },
+        state:    { label: 'State',                       placeholder: 'Select your state',            required: true, type: 'select' },
+        pincode:  { label: 'Pincode',                     placeholder: 'e.g. 560095',                 required: true },
+        landmark: { label: 'Landmark (optional)',         placeholder: 'e.g. Near Indiranagar metro',  required: false }
+      };
+    } else if (q.id === 'client_location') {
+      built.type = 'address';
+      built.key  = 'clientLocation';
+      built.fields = {
+        city:    { label: 'City',    placeholder: 'e.g. Bengaluru', required: true },
+        state:   { label: 'State',   placeholder: 'Select state',    required: true, type: 'select' },
+        pincode: { label: 'Pincode', placeholder: 'e.g. 560095',    required: true }
+      };
+    }
     obj[q.id] = built;
   });
   return JSON.stringify(obj, null, 4);
