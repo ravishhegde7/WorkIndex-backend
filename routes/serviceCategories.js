@@ -165,13 +165,13 @@ function buildCommonSection(commonCat) {
           landmark:{label:'Landmark (optional)',        placeholder:'e.g. Near Indiranagar metro', required:false},
         },
       },
-      clientLocation: {
-        id:'client_location', key:'clientLocation', type:'address', required:true,
+      client_location: {
+        id:'client_location', key:'client_location', type:'address', required:true,
         title:'Where are you based?',
         fields:{
-          pincode:{label:'Pincode',placeholder:'e.g. 560095',   required:true},
           city:   {label:'City',   placeholder:'e.g. Bengaluru',required:true},
           state:  {label:'State',  placeholder:'Select state',   required:true,type:'select'},
+          pincode:{label:'Pincode',placeholder:'e.g. 560095',   required:true},
         },
       },
       urgency: {
