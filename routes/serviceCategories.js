@@ -414,11 +414,11 @@ const WI_SERVICES = {
  
     serviceSelection: {
       id: 'service', key: 'service',
-      type: 'single',
-      required: true,
+      type: 'service-picker',
       title: 'What service do you need?',
       subtitle: 'Select the category that best matches your requirement',
-      options: ${JSON.stringify(list.map(s => ({ value: s.value, label: s.label, icon: s.icon, desc: s.label })), null, 6)},
+      required: true,
+      useServiceList: true,
     },
  
     byService: ${JSON.stringify(byService, null, 6)},
