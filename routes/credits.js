@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const { protect, authorize } = require('../middleware/auth');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
