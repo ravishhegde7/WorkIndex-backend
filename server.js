@@ -15,6 +15,9 @@ app.use(cors({
   credentials: true 
 }));
 
+// ⭐ Raw body needed ONLY for Razorpay webhook — must come before express.json
+app.use('/api/credits/webhook', express.raw({ type: 'application/json' }));
+
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ limit: '2mb', extended: true }));
 
