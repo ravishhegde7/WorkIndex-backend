@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const visitSchema = new mongoose.Schema({
   ip:        { type: String, default: 'unknown' },
+  referrer:  { type: String, default: '' },
   country:   { type: String, default: 'India' },
   state:     { type: String, default: 'Unknown' },
   city:      { type: String, default: 'Unknown' },
