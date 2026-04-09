@@ -127,7 +127,7 @@ router.post('/purchase/initiate', protect, authorize('expert'), async (req, res)
     const order = await razorpay.orders.create({
       amount: pack.price * 100,
       currency: 'INR',
-      receipt: `wi_${req.user.id}_${Date.now()}`,
+      receipt: `wi_${Date.now().toString().slice(-10)}`,
       notes: {
         userId: String(req.user.id),
         packId: pack.id,
