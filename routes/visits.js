@@ -71,7 +71,11 @@ router.post('/track', async (req, res) => {
       country = 'India';
     }
 
-    await Visit.create({ ip, country, state, city, page, sessionId, userAgent: req.headers['user-agent'] || '' });
+    await Visit.create({
+      ip, country, state, city, page, sessionId,
+      userAgent: req.headers['user-agent'] || '',
+      referrer:  req.body.referrer || req.headers['referer'] || ''
+    });
     res.json({ success: true });
   } catch (error) {
     console.error('Visit track error:', error);
@@ -89,7 +93,7 @@ router.get('/stats', adminAuth, async (req, res) => {
     const week  = new Date(today); week.setDate(week.getDate() - 7);
     const month = new Date(today); month.setDate(month.getDate() - 30);
 
-    const [total, todayCount, weekCount, monthCount, stateBreakdown, cityBreakdown, recentVisits, pageBreakdown, deviceBreakdown] = await Promise.all([
+    const [total, todayCount, weekCount, monthCount, stateBreakdown, cityBreakdown, recentVisits, pageBreakdown, deviceBreakdown, uniqueVisitors, returningVisitors, browserBreakdown, referrerBreakdown, countryBreakdown, hourlyBreakdown] = await Promise.all([
       Visit.countDocuments(),
       Visit.countDocuments({ createdAt: { $gte: today } }),
       Visit.countDocuments({ createdAt: { $gte: week } }),
@@ -115,25 +119,18 @@ router.get('/stats', adminAuth, async (req, res) => {
         .select('state city page createdAt')
         .lean(),
 
-      // Top pages
       Visit.aggregate([
         { $group: { _id: '$page', count: { $sum: 1 } } },
         { $sort: { count: -1 } },
         { $limit: 8 }
       ]),
 
-      // Device type from userAgent
       Visit.aggregate([
         {
           $addFields: {
             deviceType: {
               $cond: {
-                if: {
-                  $regexMatch: {
-                    input: { $ifNull: ['$userAgent', ''] },
-                    regex: /Mobile|Android|iPhone|iPad|tablet/i
-                  }
-                },
+                if: { $regexMatch: { input: { $ifNull: ['$userAgent', ''] }, regex: /Mobile|Android|iPhone|iPad|tablet/i } },
                 then: 'Mobile',
                 else: 'Desktop'
               }
@@ -142,6 +139,78 @@ router.get('/stats', adminAuth, async (req, res) => {
         },
         { $group: { _id: '$deviceType', count: { $sum: 1 } } },
         { $sort: { count: -1 } }
+      ]),
+
+      // Unique visitors (distinct IPs)
+      Visit.distinct('ip').then(ips => ips.filter(ip => ip && ip !== 'unknown').length),
+
+      // Returning visitors (IPs that appear more than once)
+      Visit.aggregate([
+        { $match: { ip: { $ne: 'unknown' } } },
+        { $group: { _id: '$ip', visits: { $sum: 1 } } },
+        { $match: { visits: { $gt: 1 } } },
+        { $count: 'returningCount' }
+      ]).then(r => (r[0] && r[0].returningCount) || 0),
+
+      // Browser breakdown from userAgent
+      Visit.aggregate([
+        {
+          $addFields: {
+            browser: {
+              $switch: {
+                branches: [
+                  { case: { $regexMatch: { input: { $ifNull: ['$userAgent', ''] }, regex: /Edg\//i } }, then: 'Edge' },
+                  { case: { $regexMatch: { input: { $ifNull: ['$userAgent', ''] }, regex: /OPR|Opera/i } }, then: 'Opera' },
+                  { case: { $regexMatch: { input: { $ifNull: ['$userAgent', ''] }, regex: /Chrome/i } }, then: 'Chrome' },
+                  { case: { $regexMatch: { input: { $ifNull: ['$userAgent', ''] }, regex: /Safari/i } }, then: 'Safari' },
+                  { case: { $regexMatch: { input: { $ifNull: ['$userAgent', ''] }, regex: /Firefox/i } }, then: 'Firefox' }
+                ],
+                default: 'Other'
+              }
+            }
+          }
+        },
+        { $group: { _id: '$browser', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]),
+
+      // Referrer / traffic source
+      Visit.aggregate([
+        {
+          $addFields: {
+            source: {
+              $switch: {
+                branches: [
+                  { case: { $regexMatch: { input: { $ifNull: ['$referrer', ''] }, regex: /google/i } }, then: 'Google' },
+                  { case: { $regexMatch: { input: { $ifNull: ['$referrer', ''] }, regex: /facebook|fb\./i } }, then: 'Facebook' },
+                  { case: { $regexMatch: { input: { $ifNull: ['$referrer', ''] }, regex: /instagram/i } }, then: 'Instagram' },
+                  { case: { $regexMatch: { input: { $ifNull: ['$referrer', ''] }, regex: /twitter|x\.com/i } }, then: 'Twitter/X' },
+                  { case: { $regexMatch: { input: { $ifNull: ['$referrer', ''] }, regex: /linkedin/i } }, then: 'LinkedIn' },
+                  { case: { $regexMatch: { input: { $ifNull: ['$referrer', ''] }, regex: /whatsapp/i } }, then: 'WhatsApp' },
+                  { case: { $or: [{ $eq: ['$referrer', ''] }, { $eq: ['$referrer', null] }] }, then: 'Direct' }
+                ],
+                default: 'Other'
+              }
+            }
+          }
+        },
+        { $group: { _id: '$source', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]),
+
+      // Country breakdown
+      Visit.aggregate([
+        { $match: { country: { $exists: true, $ne: null, $ne: '' } } },
+        { $group: { _id: '$country', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 15 }
+      ]),
+
+      // Hourly breakdown (hour 0–23)
+      Visit.aggregate([
+        { $addFields: { hour: { $hour: { date: '$createdAt', timezone: 'Asia/Kolkata' } } } },
+        { $group: { _id: '$hour', count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
       ])
     ]);
 
@@ -156,21 +225,32 @@ router.get('/stats', adminAuth, async (req, res) => {
       { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
     ]);
 
+    const uniqueCount    = uniqueVisitors;
+    const newVisitorCount = uniqueCount - returningVisitors;
+
     res.json({
       success: true,
       stats: {
         total,
-        today:  todayCount,
-        week:   weekCount,
-        month:  monthCount,
-        states: stateBreakdown.map(s => ({ state: s._id || 'Unknown', count: s.count })),
-        cities: cityBreakdown.map(c => ({ city:  c._id  || 'Unknown', count: c.count })),
-        daily:  dailyData.map(d => ({ date: `${d._id.day}/${d._id.month}`, count: d.count })),
-        pages:   pageBreakdown.map(p  => ({ page:   p._id  || '/', count: p.count })),
-        devices: deviceBreakdown.map(d => ({ device: d._id  || 'Desktop', count: d.count })),
-        recent: recentVisits
+        today:     todayCount,
+        week:      weekCount,
+        month:     monthCount,
+        unique:    uniqueCount,
+        returning: returningVisitors,
+        newVisitors: Math.max(0, newVisitorCount),
+        states:    stateBreakdown.map(s  => ({ state:   s._id || 'Unknown',  count: s.count })),
+        cities:    cityBreakdown.map(c   => ({ city:    c._id || 'Unknown',  count: c.count })),
+        daily:     dailyData.map(d       => ({ date: `${d._id.day}/${d._id.month}`, count: d.count })),
+        pages:     pageBreakdown.map(p   => ({ page:    p._id || '/',        count: p.count })),
+        devices:   deviceBreakdown.map(d => ({ device:  d._id || 'Desktop', count: d.count })),
+        browsers:  browserBreakdown.map(b  => ({ browser:  b._id || 'Other',  count: b.count })),
+        sources:   referrerBreakdown.map(r => ({ source:   r._id || 'Direct', count: r.count })),
+        countries: countryBreakdown.map(c  => ({ country:  c._id || 'Unknown',count: c.count })),
+        hourly:    hourlyBreakdown.map(h   => ({ hour: h._id, count: h.count })),
+        recent:    recentVisits
       }
     });
+    
   } catch (error) {
     console.error('Visit stats error:', error);
     res.status(500).json({ success: false, message: 'Error fetching visit stats' });
