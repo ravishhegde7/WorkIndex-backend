@@ -210,6 +210,41 @@ router.post('/purchase/verify', protect, authorize('expert'), async (req, res) =
       });
     }
 
+    // Fetch payment method details from Razorpay
+    let paymentMethod = 'razorpay';
+    let paymentInstrument = '';
+    try {
+      const paymentDetails = await razorpay.payments.fetch(razorpay_payment_id);
+      paymentMethod = paymentDetails.method || 'razorpay'; // upi / card / netbanking / wallet / emi
+      if (paymentDetails.method === 'upi') {
+        paymentInstrument = paymentDetails.vpa || ''; // e.g. user@oksbi
+        // Detect UPI app from VPA
+        const vpa = (paymentDetails.vpa || '').toLowerCase();
+        if (vpa.includes('okhdfcbank') || vpa.includes('okaxis') || vpa.includes('oksbi') || vpa.includes('okicici')) {
+          paymentInstrument = 'Google Pay (' + paymentDetails.vpa + ')';
+        } else if (vpa.includes('paytm')) {
+          paymentInstrument = 'Paytm (' + paymentDetails.vpa + ')';
+        } else if (vpa.includes('ybl') || vpa.includes('axl') || vpa.includes('ibl')) {
+          paymentInstrument = 'PhonePe (' + paymentDetails.vpa + ')';
+        } else if (vpa.includes('apl')) {
+          paymentInstrument = 'Amazon Pay (' + paymentDetails.vpa + ')';
+        } else if (paymentDetails.vpa) {
+          paymentInstrument = paymentDetails.vpa;
+        }
+      } else if (paymentDetails.method === 'card') {
+        const card = paymentDetails.card || {};
+        paymentInstrument = (card.network || '') + ' ' + (card.type || '') + (card.last4 ? ' ••••' + card.last4 : '');
+        paymentInstrument = paymentInstrument.trim();
+      } else if (paymentDetails.method === 'netbanking') {
+        paymentInstrument = paymentDetails.bank || '';
+      } else if (paymentDetails.method === 'wallet') {
+        paymentInstrument = paymentDetails.wallet || '';
+      } else if (paymentDetails.method === 'emi') {
+        const card = paymentDetails.card || {};
+        paymentInstrument = 'EMI — ' + (card.network || '') + (card.last4 ? ' ••••' + card.last4 : '');
+      }
+    } catch (e) { console.error('Failed to fetch Razorpay payment details:', e.message); }
+
     // Mark transaction as successful and store Razorpay IDs for future reference/refunds
     transaction.paymentStatus = 'success';
     transaction.paymentVerifiedAt = Date.now();
@@ -217,7 +252,9 @@ router.post('/purchase/verify', protect, authorize('expert'), async (req, res) =
       ...transaction.metadata,
       razorpayPaymentId: razorpay_payment_id,
       razorpayOrderId: razorpay_order_id,
-      razorpaySignature: razorpay_signature
+      razorpaySignature: razorpay_signature,
+      paymentMethod: paymentMethod,
+      paymentInstrument: paymentInstrument
     };
     await transaction.save();
 
