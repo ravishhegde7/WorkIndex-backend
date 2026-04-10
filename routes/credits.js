@@ -227,6 +227,24 @@ router.post('/purchase/verify', protect, authorize('expert'), async (req, res) =
     user.credits += transaction.credits;
     await user.save();
 
+ // ── Audit log: payment success ──
+    try {
+      const { logAudit } = require('../utils/audit');
+      logAudit(
+        { id: req.user.id, role: 'expert', name: user.name },
+        'credit_purchase',
+        { type: 'user', id: String(user._id), name: user.name },
+        {
+          credits: transaction.credits,
+          amountPaid: transaction.amount,
+          razorpayPaymentId: razorpay_payment_id,
+          razorpayOrderId: razorpay_order_id,
+          paymentMethod: 'razorpay',
+          packId: transaction.metadata && transaction.metadata.packId
+        }
+      ).catch(function() {});
+    } catch (e) {}
+    
     // Log to CreditTransaction for admin panel visibility
     try {
       const CreditTx = require('../models/CreditTransaction');
@@ -541,6 +559,25 @@ router.post('/webhook', async (req, res) => {
           } catch (e) {}
         }
       }
+
+      try {
+            const { logAudit } = require('../utils/audit');
+            logAudit(
+              { id: String(user._id), role: 'expert', name: user.name },
+              'credit_purchase',
+              { type: 'user', id: String(user._id), name: user.name },
+              {
+                credits: transaction.credits,
+                amountPaid: transaction.amount,
+                razorpayPaymentId: payment.id,
+                paymentMethod: 'razorpay',
+                creditedVia: 'webhook'
+              }
+            ).catch(function() {});
+          } catch (e) {}
+        }
+      }
+      
       // If paymentStatus is already 'success', do nothing — already credited via /verify
     }
 
