@@ -557,10 +557,8 @@ router.post('/webhook', async (req, res) => {
               newBalance: user.credits, userId: user._id
             }).catch(() => {});
           } catch (e) {}
-        }
-      }
 
-      try {
+          try {
             const { logAudit } = require('../utils/audit');
             logAudit(
               { id: String(user._id), role: 'expert', name: user.name },
@@ -577,7 +575,6 @@ router.post('/webhook', async (req, res) => {
           } catch (e) {}
         }
       }
-      
       // If paymentStatus is already 'success', do nothing — already credited via /verify
     }
 
