@@ -974,18 +974,38 @@ res.json({ success: true, message: 'Post deleted' });
 });
 
 // ===========================================================
-// NEW: FAILED PAYMENTS
+// PAYMENTS — all transactions (success + failed + pending + refunded)
 // ===========================================================
+router.get('/payments', protect, async (req, res) => {
+  try {
+    var Transaction = safeReq('../models/Transaction');
+    if (!Transaction) return res.json({ success: true, payments: [], total: 0 });
+    var from = req.query.from, to = req.query.to;
+    var status = req.query.status;
+    var limit = parseInt(req.query.limit) || 200;
+    var query = { type: 'credit_purchase' };
+    if (status && status !== 'all') query.paymentStatus = status;
+    addDateFilter(query, 'createdAt', from, to);
+    var payments = await Transaction.find(query)
+      .populate('user', 'name email phone credits')
+      .sort({ createdAt: -1 })
+      .limit(limit);
+    res.json({ success: true, payments: payments, total: payments.length });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
 router.get('/payments/failed', protect, async (req, res) => {
   try {
-    var FailedPayment = safeModel('FailedPayment');
-    if (!FailedPayment) return res.json({ success: true, payments: [], message: 'FailedPayment model not loaded yet' });
+    var Transaction = safeReq('../models/Transaction');
+    if (!Transaction) return res.json({ success: true, payments: [], total: 0 });
     var from = req.query.from, to = req.query.to;
-    var limit = parseInt(req.query.limit) || 100;
-    var query = {};
+    var query = { type: 'credit_purchase', paymentStatus: 'failed' };
     addDateFilter(query, 'createdAt', from, to);
-    var payments = await FailedPayment.find(query).populate('user', 'name email phone').sort({ createdAt: -1 }).limit(limit);
-    res.json({ success: true, payments, total: payments.length });
+    var payments = await Transaction.find(query)
+      .populate('user', 'name email phone')
+      .sort({ createdAt: -1 })
+      .limit(100);
+    res.json({ success: true, payments: payments, total: payments.length });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
