@@ -549,12 +549,41 @@ router.post('/webhook', async (req, res) => {
       if (transaction && transaction.paymentStatus === 'pending') {
         console.log(`🔄 Webhook: crediting user for missed verify — order ${orderId}`);
 
+        // Fetch payment method details from Razorpay
+        let paymentMethod = payment.method || 'razorpay';
+        let paymentInstrument = '';
+        try {
+          const vpa = (payment.vpa || '').toLowerCase();
+          if (payment.method === 'upi') {
+            if (vpa.includes('okhdfcbank') || vpa.includes('okaxis') || vpa.includes('oksbi') || vpa.includes('okicici')) {
+              paymentInstrument = 'Google Pay (' + payment.vpa + ')';
+            } else if (vpa.includes('paytm')) {
+              paymentInstrument = 'Paytm (' + payment.vpa + ')';
+            } else if (vpa.includes('ybl') || vpa.includes('axl') || vpa.includes('ibl')) {
+              paymentInstrument = 'PhonePe (' + payment.vpa + ')';
+            } else if (vpa.includes('apl')) {
+              paymentInstrument = 'Amazon Pay (' + payment.vpa + ')';
+            } else if (payment.vpa) {
+              paymentInstrument = payment.vpa;
+            }
+          } else if (payment.method === 'card') {
+            const card = payment.card || {};
+            paymentInstrument = ((card.network || '') + ' ' + (card.type || '') + (card.last4 ? ' ••••' + card.last4 : '')).trim();
+          } else if (payment.method === 'netbanking') {
+            paymentInstrument = payment.bank || '';
+          } else if (payment.method === 'wallet') {
+            paymentInstrument = payment.wallet || '';
+          }
+        } catch (e) {}
+
         transaction.paymentStatus = 'success';
         transaction.paymentVerifiedAt = Date.now();
         transaction.metadata = {
           ...transaction.metadata,
           razorpayPaymentId: payment.id,
-          creditedVia: 'webhook' // so you can identify these in admin panel
+          creditedVia: 'webhook',
+          paymentMethod: paymentMethod,
+          paymentInstrument: paymentInstrument
         };
         await transaction.save();
 
