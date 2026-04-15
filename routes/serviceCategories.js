@@ -231,18 +231,18 @@ function buildCommonSection(commonCat) {
       built.fields = {
         building: { label: 'Flat / Building / House No.', placeholder: 'e.g. 4B, Sunrise Apartments', required: true },
         area:     { label: 'Area / Locality',             placeholder: 'e.g. Koramangala 5th Block',  required: true },
-        city:     { label: 'City',                        placeholder: 'e.g. Bengaluru',              required: true },
-        state:    { label: 'State',                       placeholder: 'Select your state',            required: true, type: 'select' },
-        pincode:  { label: 'Pincode',                     placeholder: 'e.g. 560095',                 required: true },
+        pincode:  { label: 'Pincode',                     placeholder: 'e.g. 560095',                 required: true, autoFillTrigger: true },
+        city:     { label: 'City',                        placeholder: 'e.g. Bengaluru',              required: true, autoFilled: true },
+        state:    { label: 'State',                       placeholder: 'Select your state',            required: true, type: 'select', autoFilled: true },
         landmark: { label: 'Landmark (optional)',         placeholder: 'e.g. Near Indiranagar metro',  required: false }
       };
     } else if (q.id === 'client_location') {
       built.type = 'address';
       built.key  = 'clientLocation';
       built.fields = {
-        city:    { label: 'City',    placeholder: 'e.g. Bengaluru', required: true },
-        state:   { label: 'State',   placeholder: 'Select state',    required: true, type: 'select' },
-        pincode: { label: 'Pincode', placeholder: 'e.g. 560095',    required: true }
+        pincode: { label: 'Pincode', placeholder: 'e.g. 560095',    required: true, autoFillTrigger: true },
+        city:    { label: 'City',    placeholder: 'e.g. Bengaluru', required: true, autoFilled: true },
+        state:   { label: 'State',   placeholder: 'Select state',    required: true, type: 'select', autoFilled: true }
       };
     }
     obj[q.id] = built;
@@ -791,9 +791,9 @@ router.post('/seed-common', protect, superOnly, async (req, res) => {
           addressFields: {
             building: { label: 'Flat / Building / House No.', placeholder: 'e.g. 4B, Sunrise Apartments', required: true },
             area:     { label: 'Area / Street / Locality',    placeholder: 'e.g. Koramangala 5th Block',  required: true },
-            pincode:  { label: 'Pincode',                     placeholder: 'e.g. 560095',                 required: true },
-            city:     { label: 'City',                        placeholder: 'e.g. Bengaluru',              required: true },
-            state:    { label: 'State',                       placeholder: 'Select your state',            required: true, type: 'select' },
+            pincode:  { label: 'Pincode',                     placeholder: 'e.g. 560095',                 required: true, autoFillTrigger: true },
+            city:     { label: 'City',                        placeholder: 'e.g. Bengaluru',              required: true, autoFilled: true },
+            state:    { label: 'State',                       placeholder: 'Select your state',            required: true, type: 'select', autoFilled: true },
             landmark: { label: 'Landmark (optional)',         placeholder: 'e.g. Near Indiranagar metro',  required: false },
           }
         },
@@ -802,9 +802,9 @@ router.post('/seed-common', protect, superOnly, async (req, res) => {
           subtitle: 'Helps match you with professionals in your region',
           alias: 'clientLocation',
           addressFields: {
-            pincode: { label: 'Pincode', placeholder: 'e.g. 560095',    required: true },
-            city:    { label: 'City',    placeholder: 'e.g. Bengaluru', required: true },
-            state:   { label: 'State',   placeholder: 'Select state',    required: true, type: 'select' },
+            pincode: { label: 'Pincode', placeholder: 'e.g. 560095',    required: true, autoFillTrigger: true },
+            city:    { label: 'City',    placeholder: 'e.g. Bengaluru', required: true, autoFilled: true },
+            state:   { label: 'State',   placeholder: 'Select state',    required: true, type: 'select', autoFilled: true },
           }
         },
         {
