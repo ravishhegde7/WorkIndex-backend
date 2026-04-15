@@ -159,9 +159,9 @@ function buildCommonSection(commonCat) {
         fields:{
           building:{label:'Flat / Building / House No.',placeholder:'e.g. 4B, Sunrise Apartments',required:true},
           area:    {label:'Area / Street / Locality',   placeholder:'e.g. Koramangala 5th Block', required:true},
-          pincode: {label:'Pincode',                    placeholder:'e.g. 560095',                required:true},
-          city:    {label:'City',                       placeholder:'e.g. Bengaluru',             required:true},
-          state:   {label:'State',                      placeholder:'Select your state',           required:true,type:'select'},
+          pincode: {label:'Pincode',                    placeholder:'e.g. 560095',                required:true, autoFillTrigger:true},
+          city:    {label:'City',                       placeholder:'e.g. Bengaluru',             required:true, autoFilled:true},
+          state:   {label:'State',                      placeholder:'Select your state',           required:true, type:'select', autoFilled:true},
           landmark:{label:'Landmark (optional)',        placeholder:'e.g. Near Indiranagar metro', required:false},
         },
       },
@@ -169,9 +169,9 @@ function buildCommonSection(commonCat) {
         id:'client_location', key:'client_location', type:'address', required:true,
         title:'Where are you based?',
         fields:{
-          city:   {label:'City',   placeholder:'e.g. Bengaluru',required:true},
-          state:  {label:'State',  placeholder:'Select state',   required:true,type:'select'},
-          pincode:{label:'Pincode',placeholder:'e.g. 560095',   required:true},
+          pincode:{label:'Pincode',placeholder:'e.g. 560095',   required:true, autoFillTrigger:true},
+          city:   {label:'City',   placeholder:'e.g. Bengaluru',required:true, autoFilled:true},
+          state:  {label:'State',  placeholder:'Select state',   required:true, type:'select', autoFilled:true},
         },
       },
       urgency: {
