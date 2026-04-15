@@ -14,7 +14,7 @@ const QuestionSchema = new mongoose.Schema({
   question:    { type: String, required: true },
   type: {
   type: String,
-  enum: ['radio', 'checkbox', 'text', 'date', 'textarea', 'select', 'address', 'slider', 'pincode'], default: 'radio' },
+  enum: ['radio', 'checkbox', 'text', 'date', 'textarea', 'select', 'address', 'address-simple', 'slider', 'pincode'], default: 'radio' },
   required:    { type: Boolean, default: true },
   alias:       { type: String },                   // e.g. 'urgency' for timeline mapping
   options:     [OptionSchema],
