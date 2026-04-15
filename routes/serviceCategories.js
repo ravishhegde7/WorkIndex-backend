@@ -288,6 +288,7 @@ function buildExpertSection(expertCat) {
           {value:'local', label:'Local (in-person preferred)',icon:'📍',desc:'Prefer meeting clients face to face'},
           {value:'both',  label:'Both online and in-person', icon:'🌐',desc:'Flexible depending on the client'},
         ]},
+      { id:'expert_pincode', key:'pincode', type:'pincode', required:true,  title:'What is your pincode?', subtitle:'Enter your pincode — city and state will be filled automatically', placeholder:'Enter 6-digit pincode' },
       { id:'expert_city',    key:'city',    type:'text',    required:true,  title:'Which city are you based in?',   subtitle:'This helps match you with local clients', placeholder:'e.g. Bengaluru, Mumbai, Delhi...' },
       { id:'expert_state',   key:'state',   type:'single',  required:true,  title:'Which state are you in?',
         options:[
@@ -307,7 +308,6 @@ function buildExpertSection(expertCat) {
           {value:'Uttarakhand',label:'Uttarakhand'},{value:'West Bengal',label:'West Bengal'},
           {value:'Other',label:'Other'},
         ]},
-      { id:'expert_pincode', key:'pincode', type:'pincode', required:true,  title:'What is your pincode?',          subtitle:'Used to match you with nearby clients', placeholder:'Enter 6-digit pincode' },
       { id:'expert_bio',     key:'bio',     type:'textarea',required:true,  title:'Tell clients about yourself',    subtitle:'Your bio appears on your public profile', placeholder:'e.g. I am a Chartered Accountant with 8 years of experience...', minLength:50, maxLength:500, validation:'Minimum 50 characters required' },
     ], null, 4);
   }
@@ -923,6 +923,11 @@ router.post('/seed-expert', protect, superOnly, async (req, res) => {
           ]
         },
         {
+          id: 'expert_pincode', question: 'What is your pincode?', type: 'pincode', required: true,
+          subtitle: 'Enter your pincode — city and state will be filled automatically',
+          placeholder: 'Enter 6-digit pincode'
+        },
+        {
           id: 'expert_city', question: 'Which city are you based in?', type: 'text', required: true,
           subtitle: 'This helps match you with local clients',
           placeholder: 'e.g. Bengaluru, Mumbai, Delhi...'
@@ -946,11 +951,6 @@ router.post('/seed-expert', protect, superOnly, async (req, res) => {
             {value:'Uttarakhand',label:'Uttarakhand'},{value:'West Bengal',label:'West Bengal'},
             {value:'Other',label:'Other'},
           ]
-        },
-        {
-          id: 'expert_pincode', question: 'What is your pincode?', type: 'pincode', required: true,
-          subtitle: 'Used to match you with nearby clients',
-          placeholder: 'Enter 6-digit pincode'
         },
         {
           id: 'expert_bio', question: 'Tell clients about yourself', type: 'textarea', required: true,
