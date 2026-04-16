@@ -872,6 +872,16 @@ router.post('/seed-common', protect, superOnly, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 // FIX 1: SEED EXPERT STEPS — single route definition only.
 // ══════════════════════════════════════════════════════════════
+// RESET expert steps — deletes existing and re-seeds with correct order
+router.post('/reset-expert', protect, superOnly, async (req, res) => {
+  try {
+    await ServiceCategory.deleteOne({ value: '_expert' });
+    res.json({ success: true, message: 'Expert steps deleted. Now click Seed Expert Steps to re-seed.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 router.post('/seed-expert', protect, superOnly, async (req, res) => {
   try {
     const existing = await ServiceCategory.findOne({ value: '_expert' });
