@@ -301,10 +301,23 @@ function buildExpertSection(expertCat) {
   }
  
   // FIX 2: Build from DB _expert document questions
-  return JSON.stringify(
-    (expertCat.questions || []).map(q => buildQuestion(q)),
-    null, 4
-  );
+return JSON.stringify(
+  (expertCat.questions || []).map(q => {
+    const built = buildQuestion(q);
+    // Hardcode addressFields for expert_location_details
+    // (same as buildCommonSection does for full_address / client_location)
+    if (q.id === 'expert_location_details') {
+      built.type   = 'address';
+      built.fields = {
+        pincode: { label: 'Pincode', placeholder: 'e.g. 560095',    required: true, autoFillTrigger: true },
+        city:    { label: 'City',    placeholder: 'e.g. Bengaluru', required: true, autoFilled: true },
+        state:   { label: 'State',   placeholder: 'Select state',    required: true, type: 'select', autoFilled: true }
+      };
+    }
+    return built;
+  }),
+  null, 4
+);
 }
  
 // ── Generate services-config.js content from DB ────────────
