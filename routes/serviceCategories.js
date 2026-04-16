@@ -921,34 +921,13 @@ router.post('/seed-expert', protect, superOnly, async (req, res) => {
           ]
         },
         {
-          id: 'expert_pincode', question: 'What is your pincode?', type: 'pincode', required: true,
+          id: 'expert_location_details', question: 'Where are you based?', type: 'address', required: true,
           subtitle: 'Enter your pincode — city and state will be filled automatically',
-          placeholder: 'Enter 6-digit pincode'
-        },
-        {
-          id: 'expert_city', question: 'Which city are you based in?', type: 'text', required: true,
-          subtitle: 'This helps match you with local clients',
-          placeholder: 'e.g. Bengaluru, Mumbai, Delhi...'
-        },
-        {
-          id: 'expert_state', question: 'Which state are you in?', type: 'radio', required: true,
-          options: [
-            {value:'Andhra Pradesh',label:'Andhra Pradesh'},{value:'Arunachal Pradesh',label:'Arunachal Pradesh'},
-            {value:'Assam',label:'Assam'},{value:'Bihar',label:'Bihar'},{value:'Chandigarh',label:'Chandigarh'},
-            {value:'Chhattisgarh',label:'Chhattisgarh'},{value:'Delhi',label:'Delhi'},{value:'Goa',label:'Goa'},
-            {value:'Gujarat',label:'Gujarat'},{value:'Haryana',label:'Haryana'},
-            {value:'Himachal Pradesh',label:'Himachal Pradesh'},{value:'Jammu and Kashmir',label:'Jammu and Kashmir'},
-            {value:'Jharkhand',label:'Jharkhand'},{value:'Karnataka',label:'Karnataka'},{value:'Kerala',label:'Kerala'},
-            {value:'Ladakh',label:'Ladakh'},{value:'Madhya Pradesh',label:'Madhya Pradesh'},
-            {value:'Maharashtra',label:'Maharashtra'},{value:'Manipur',label:'Manipur'},
-            {value:'Meghalaya',label:'Meghalaya'},{value:'Mizoram',label:'Mizoram'},{value:'Nagaland',label:'Nagaland'},
-            {value:'Odisha',label:'Odisha'},{value:'Puducherry',label:'Puducherry'},{value:'Punjab',label:'Punjab'},
-            {value:'Rajasthan',label:'Rajasthan'},{value:'Sikkim',label:'Sikkim'},
-            {value:'Tamil Nadu',label:'Tamil Nadu'},{value:'Telangana',label:'Telangana'},
-            {value:'Tripura',label:'Tripura'},{value:'Uttar Pradesh',label:'Uttar Pradesh'},
-            {value:'Uttarakhand',label:'Uttarakhand'},{value:'West Bengal',label:'West Bengal'},
-            {value:'Other',label:'Other'},
-          ]
+          addressFields: {
+            pincode: { label: 'Pincode', placeholder: 'e.g. 560095',    required: true, autoFillTrigger: true },
+            city:    { label: 'City',    placeholder: 'e.g. Bengaluru', required: true, autoFilled: true },
+            state:   { label: 'State',   placeholder: 'Select state',    required: true, type: 'select', autoFilled: true },
+          }
         },
         {
           id: 'expert_bio', question: 'Tell clients about yourself', type: 'textarea', required: true,
