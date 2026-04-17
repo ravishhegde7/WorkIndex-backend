@@ -459,6 +459,12 @@ router.delete('/:id', protect, authorize('client'), async (req, res) => {
     await request.deleteOne();
     
     console.log(`✅ Request ${req.params.id} deleted`);
+ logAudit(
+      { id: req.user.id, role: 'client', name: req.user.name },
+      'request_cancelled',
+      { type: 'request', id: req.params.id, name: request.title },
+      {}
+    ).catch(() => {});
     
     res.json({ 
       success: true, 
