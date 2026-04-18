@@ -384,6 +384,7 @@ router.put('/profile', protect, async (req, res) => {
 
     const topLevelUpdate = {};
     if (req.body.whyChooseMe !== undefined) topLevelUpdate.whyChooseMe = req.body.whyChooseMe;
+    if (req.body.phone) topLevelUpdate.phone = req.body.phone;
 
     const user = await User.findByIdAndUpdate(
       req.user.id,
