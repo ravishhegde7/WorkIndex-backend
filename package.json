@@ -20,7 +20,9 @@
     "express-validator": "^7.0.1",
     "multer": "^1.4.5-lts.1",
     "node-cron": "^3.0.3",
-        "razorpay": "^2.9.2"
+        "razorpay": "^2.9.2",
+        "google-auth-library": "^9.14.0"
+
 
     
   },
