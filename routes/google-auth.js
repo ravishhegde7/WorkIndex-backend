@@ -195,6 +195,7 @@ router.post('/google-verify-otp', async (req, res) => {
     return res.status(201).json({
       success: true,
       action:  'signup_complete',
+       needsPhone:    true, 
       message: 'Account verified successfully!',
       token:   generateToken(user._id),
       user:    buildUserObject(user),
