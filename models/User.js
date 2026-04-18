@@ -16,13 +16,20 @@ const userSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
-    required: true,
+    required: false,
     unique: true,
-    trim: true
+    sparse: true,
+    trim: true,
+    default: null
+  },
+  googleId: {
+    type: String,
+    default: null,
+    sparse: true
   },
   password: {
     type: String,
-    required: true,
+    required: false,
     select: false
   },
   role: {
@@ -248,6 +255,7 @@ userSchema.index({ 'location.city': 1, 'location.state': 1 });
 userSchema.index({ rating: -1 });
 userSchema.index({ isBanned: 1 });
 userSchema.index({ isApproved: 1 });
+userSchema.index({ googleId: 1 }, { sparse: true });
 
 // Pre-save middleware for password hashing
 userSchema.pre('save', async function(next) {
