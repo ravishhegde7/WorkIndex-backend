@@ -92,6 +92,7 @@ app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/visits', require('./routes/visits'));
 app.use('/api/admin/seo', require('./routes/seo'));
 app.use('/api/admin/service-categories', require('./routes/serviceCategories'));
+app.use('/api/auth', require('./routes/google-auth'));
 
 // Removed /create-admin route — use MongoDB directly or Manage Admins UI
 
