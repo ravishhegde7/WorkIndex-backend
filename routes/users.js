@@ -419,8 +419,14 @@ router.put('/profile', protect, async (req, res) => {
 
     const topLevelUpdate = {};
     if (req.body.whyChooseMe !== undefined) topLevelUpdate.whyChooseMe = req.body.whyChooseMe;
-    if (req.body.phone) topLevelUpdate.phone = req.body.phone;
-
+    if (req.body.phone) {
+      var phoneToSave = String(req.body.phone).replace(/\D/g, '');
+      if (!isWhitelisted(req) && !isValidIndianPhone(phoneToSave)) {
+        return res.status(400).json({ success: false, message: 'Enter a valid Indian mobile number (10 digits starting with 6, 7, 8 or 9)' });
+      }
+      topLevelUpdate.phone = phoneToSave;
+    }
+    
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { 
