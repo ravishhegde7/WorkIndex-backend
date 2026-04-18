@@ -2435,4 +2435,53 @@ router.post('/admins/:id/toggle', protect, superOnly, async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
+// DELETE USER PERMANENTLY
+router.delete('/users/:id', protect, superOnly, async (req, res) => {
+  try {
+    var User = mongoose.model('User');
+    var user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    var userName = user.name, userRole = user.role;
+
+    // Clean up related data
+    try {
+      var Approach = safeReq('../models/Approach');
+      var Request  = mongoose.model('Request');
+      var CreditTx = safeReq('../models/CreditTransaction');
+      var Chat     = safeModel('Chat');
+      var Ticket   = safeModel('SupportTicket');
+      var Notification = safeModel('Notification');
+      var Rating   = safeModel('Rating');
+
+      if (Approach)     { await Approach.deleteMany({ $or: [{ expert: req.params.id }, { client: req.params.id }] }); }
+      if (userRole === 'client') { await Request.deleteMany({ client: req.params.id }); }
+      if (CreditTx)     { await CreditTx.deleteMany({ user: req.params.id }); }
+      if (Chat)         { await Chat.deleteMany({ $or: [{ expert: req.params.id }, { client: req.params.id }] }); }
+      if (Ticket)       { await Ticket.deleteMany({ user: req.params.id }); }
+      if (Notification) { await Notification.deleteMany({ user: req.params.id }); }
+      if (Rating)       { await Rating.deleteMany({ $or: [{ expert: req.params.id }, { client: req.params.id }] }); }
+    } catch(cleanupErr) {
+      console.error('Cleanup error during user delete:', cleanupErr.message);
+    }
+
+    await User.findByIdAndDelete(req.params.id);
+
+    try {
+      const { logAudit } = require('../utils/audit');
+      logAudit(
+        { id: req.admin._id, role: 'admin', name: req.admin.name },
+        'admin_user_deleted',
+        { type: 'user', id: req.params.id, name: userName },
+        { role: userRole, deletedBy: req.admin.adminId }
+      ).catch(() => {});
+    } catch(e) {}
+
+    res.json({ success: true, message: userName + ' (' + userRole + ') permanently deleted along with related data' });
+  } catch (err) {
+    console.error('Delete user error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;
