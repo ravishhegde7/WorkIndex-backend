@@ -100,7 +100,7 @@ router.post('/google-init', async (req, res) => {
     await User.create({
       name,
       email,
-      phone:         null,
+      phone:         undefined,
       password:      Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2),
       role:          signupRole,
       googleId,
