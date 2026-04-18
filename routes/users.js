@@ -8,6 +8,41 @@ const User = require('../models/User');
 const Rating = require('../models/Rating');
 const { logAudit } = require('../utils/audit');
 
+// ─── PHONE VALIDATION ───────────────────────────────────────────────────────
+const WHITELISTED_IPS = [
+  '127.0.0.1',
+  '::1',
+  ...(process.env.WHITELISTED_IPS ? process.env.WHITELISTED_IPS.split(',').map(function(ip){ return ip.trim(); }) : [])
+];
+
+function getClientIp(req) {
+  return (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+    || req.headers['x-real-ip']
+    || (req.connection && req.connection.remoteAddress)
+    || req.ip
+    || '';
+}
+
+function isWhitelisted(req) {
+  var ip = getClientIp(req);
+  var bypassHeader = req.headers['x-dev-bypass'];
+  var ipMatch = WHITELISTED_IPS.some(function(w) { return ip === w || ip.endsWith(w); });
+  var headerMatch = process.env.DEV_BYPASS_SECRET && bypassHeader === process.env.DEV_BYPASS_SECRET;
+  return ipMatch || headerMatch;
+}
+
+function isValidIndianPhone(phone) {
+  if (!phone) return false;
+  var cleaned = String(phone).replace(/\D/g, '');
+  if (cleaned.length !== 10) return false;
+  if (!/^[6-9]/.test(cleaned)) return false;
+  if (/^(\d)\1{9}$/.test(cleaned)) return false;
+  var invalid = ['1234567890','0987654321','1234554321'];
+  if (invalid.indexOf(cleaned) !== -1) return false;
+  return true;
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 // ✅ FIXED: Use memory storage instead of disk storage
 const storage = multer.memoryStorage();
 
