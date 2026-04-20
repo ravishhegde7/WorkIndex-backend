@@ -2154,8 +2154,13 @@ router.post('/danger/clear-category', protect, superOnly, async (req, res) => {
     else if (category === 'tickets'    && Ticket)     { result = (await Ticket.deleteMany({})).deletedCount; }
     else if (category === 'notifications' && Notification) { result = (await Notification.deleteMany({})).deletedCount; }
     else if (category === 'credits'    && CreditTx)   { result = (await CreditTx.deleteMany({})).deletedCount; }
+    else if (category === 'payments') {
+      var TransactionModel = safeReq('../models/Transaction');
+      if (!TransactionModel) return res.status(400).json({ success: false, message: 'Transaction model unavailable' });
+      result = (await TransactionModel.deleteMany({ type: 'credit_purchase' })).deletedCount;
+    }
     else return res.status(400).json({ success: false, message: 'Unknown category or model unavailable: ' + category });
-
+    
     res.json({ success: true, message: 'Deleted ' + result + ' ' + category + ' records.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -2433,6 +2438,28 @@ router.post('/admins/:id/toggle', protect, superOnly, async (req, res) => {
     await admin.save();
     res.json({ success: true, message: admin.isActive ? 'Admin activated' : 'Admin deactivated', isActive: admin.isActive });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+router.delete('/payments/:id', protect, superOnly, async (req, res) => {
+  try {
+    var Transaction = safeReq('../models/Transaction');
+    if (!Transaction) return res.status(503).json({ success: false, message: 'Transaction model not found' });
+    var payment = await Transaction.findById(req.params.id);
+    if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
+    await Transaction.findByIdAndDelete(req.params.id);
+    try {
+      const { logAudit } = require('../utils/audit');
+      logAudit(
+        { id: req.admin._id, role: 'admin', name: req.admin.name },
+        'admin_payment_deleted',
+        { type: 'payment', id: req.params.id, name: payment.user ? String(payment.user) : '' },
+        { amount: payment.amount, status: payment.paymentStatus }
+      ).catch(() => {});
+    } catch(e) {}
+    res.json({ success: true, message: 'Payment record deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 // DELETE USER PERMANENTLY
