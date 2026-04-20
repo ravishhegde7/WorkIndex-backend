@@ -17,7 +17,7 @@ const CREDIT_PACKS = [
   { 
     id: 'starter',
     credits: 15, 
-    price: 100,
+    price: 1,
     pricePerCredit: 6.67,
     savings: 0,
     popular: false
