@@ -1053,12 +1053,27 @@ router.post('/communications/send', protect, cp('users','write'), async (req, re
 });
 
 router.get('/communications/history', protect, async (req, res) => {
+  
+  
   try {
     var CommLog = safeModel('CommunicationLog');
     if (!CommLog) return res.json({ success: true, logs: [] });
     var logs = await CommLog.find({}).sort({ createdAt: -1 }).limit(50);
     res.json({ success: true, logs });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+router.delete('/communications/history/:id', protect, superOnly, async (req, res) => {
+  try {
+    var CommLog = safeModel('CommunicationLog');
+    if (!CommLog) return res.status(503).json({ success: false, message: 'CommunicationLog model not found' });
+    var log = await CommLog.findById(req.params.id);
+    if (!log) return res.status(404).json({ success: false, message: 'Log not found' });
+    await CommLog.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Communication log deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 // ===========================================================
