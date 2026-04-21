@@ -492,7 +492,7 @@ router.get('/experts', async (req, res) => {
       minRating, 
       sortBy,
       page = 1,
-      limit = 20
+      limit = 50
     } = req.query;
     
     const query = { role: 'expert' };  // ← removed isActive filter
