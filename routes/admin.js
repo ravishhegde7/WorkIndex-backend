@@ -2526,4 +2526,17 @@ router.delete('/users/:id', protect, superOnly, async (req, res) => {
   }
 });
 
+router.delete('/credits/:id', protect, superOnly, async (req, res) => {
+  try {
+    var CreditTx = safeReq('../models/CreditTransaction');
+    if (!CreditTx) return res.status(503).json({ success: false, message: 'Model not found' });
+    var tx = await CreditTx.findById(req.params.id);
+    if (!tx) return res.status(404).json({ success: false, message: 'Transaction not found' });
+    await CreditTx.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Transaction record deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;
